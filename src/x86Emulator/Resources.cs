@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Storage;
@@ -8,9 +9,8 @@ using Windows.UI;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Media;
-using x86Emulator.Devices;
+using System.IO;
 
 namespace x86Emulator
 {
@@ -22,7 +22,47 @@ namespace x86Emulator
         public Floppies floppies;
         public HDDs hdds;
         public CDROMs cdrom;
+        public static string HddImagePath { get; set; }
+        public static string CdRomImagePath { get; set; }
 
+        public static void LoadHddImage(string path)
+        {
+            // Use File.Exists from System.IO; in UWP the path must be accessible to the app
+            if (string.IsNullOrEmpty(path))
+            {
+                Debug.WriteLine("LoadHddImage called with null/empty path.");
+                return;
+            }
+
+            if (File.Exists(path))
+            {
+                HddImagePath = path;
+                Debug.WriteLine($"HDD image loaded: {path}");
+            }
+            else
+            {
+                Debug.WriteLine($"HDD image not found: {path}");
+            }
+        }
+
+        public static void LoadCdRomImage(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                Debug.WriteLine("LoadCdRomImage called with null/empty path.");
+                return;
+            }
+
+            if (File.Exists(path))
+            {
+                CdRomImagePath = path;
+                Debug.WriteLine($"CD-ROM image loaded: {path}");
+            }
+            else
+            {
+                Debug.WriteLine($"CD-ROM image not found: {path}");
+            }
+        }
 
         public Resources(EventHandler floppyCallback, EventHandler hddCallback, EventHandler cdromCallback)
         {
@@ -46,6 +86,7 @@ namespace x86Emulator
 
             resourcesContainer.Children.Add(cdrom.resourcesSubContainer);
         }
+       
 
         #region Internal 
         private UIElement GetSperator()

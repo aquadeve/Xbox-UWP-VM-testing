@@ -1,0 +1,139 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|c:\\users\\hondo\\source\\repos\\x86emulator-uwp\\src\\x86emulator\\devices\\cdromdrive.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|solutionrelative:x86emulator\\devices\\cdromdrive.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|c:\\users\\hondo\\source\\repos\\x86emulator-uwp\\src\\x86emulator\\machine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|solutionrelative:x86emulator\\machine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|c:\\users\\hondo\\source\\repos\\x86emulator-uwp\\src\\x86emulator\\resources.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|solutionrelative:x86emulator\\resources.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|c:\\users\\hondo\\source\\repos\\x86emulator-uwp\\src\\x86emulator\\devices\\ata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|solutionrelative:x86emulator\\devices\\ata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|c:\\users\\hondo\\source\\repos\\x86emulator-uwp\\src\\x86emulator\\devices\\harddrive.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|solutionrelative:x86emulator\\devices\\harddrive.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|c:\\users\\hondo\\source\\repos\\x86emulator-uwp\\src\\x86emulator\\atadevice\\atadrive.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|solutionrelative:x86emulator\\atadevice\\atadrive.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|c:\\users\\hondo\\source\\repos\\x86emulator-uwp\\src\\x86emulator\\devices\\cmos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}|x86Emulator\\x86Emulator.csproj|solutionrelative:x86emulator\\devices\\cmos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ATADrive.cs",
+              "DocumentMoniker": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\ATADevice\\ATADrive.cs",
+              "RelativeDocumentMoniker": "x86Emulator\\ATADevice\\ATADrive.cs",
+              "ToolTip": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\ATADevice\\ATADrive.cs",
+              "RelativeToolTip": "x86Emulator\\ATADevice\\ATADrive.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAAgwBYAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T03:23:51.814Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "CMOS.cs",
+              "DocumentMoniker": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Devices\\CMOS.cs",
+              "RelativeDocumentMoniker": "x86Emulator\\Devices\\CMOS.cs",
+              "ToolTip": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Devices\\CMOS.cs",
+              "RelativeToolTip": "x86Emulator\\Devices\\CMOS.cs",
+              "ViewState": "AgIAAGYAAAAAAAAAAAAlwHYAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T00:10:35.103Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ATA.cs",
+              "DocumentMoniker": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Devices\\ATA.cs",
+              "RelativeDocumentMoniker": "x86Emulator\\Devices\\ATA.cs",
+              "ToolTip": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Devices\\ATA.cs",
+              "RelativeToolTip": "x86Emulator\\Devices\\ATA.cs",
+              "ViewState": "AgIAAFYAAAAAAAAAAAAQwGUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T23:45:50.934Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CdRomDrive.cs",
+              "DocumentMoniker": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Devices\\CdRomDrive.cs",
+              "RelativeDocumentMoniker": "x86Emulator\\Devices\\CdRomDrive.cs",
+              "ToolTip": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Devices\\CdRomDrive.cs",
+              "RelativeToolTip": "x86Emulator\\Devices\\CdRomDrive.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAawCsAAABIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T23:45:06.799Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "HardDrive.cs",
+              "DocumentMoniker": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Devices\\HardDrive.cs",
+              "RelativeDocumentMoniker": "x86Emulator\\Devices\\HardDrive.cs",
+              "ToolTip": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Devices\\HardDrive.cs",
+              "RelativeToolTip": "x86Emulator\\Devices\\HardDrive.cs",
+              "ViewState": "AgIAAIYAAAAAAAAAAAAQwKQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T23:44:53.137Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Resources.cs",
+              "DocumentMoniker": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Resources.cs",
+              "RelativeDocumentMoniker": "x86Emulator\\Resources.cs",
+              "ToolTip": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Resources.cs",
+              "RelativeToolTip": "x86Emulator\\Resources.cs",
+              "ViewState": "AgIAAH0AAAAAAAAAAAAuwIwAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T23:43:59.174Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Machine.cs",
+              "DocumentMoniker": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Machine.cs",
+              "RelativeDocumentMoniker": "x86Emulator\\Machine.cs",
+              "ToolTip": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Emulator\\Machine.cs",
+              "RelativeToolTip": "x86Emulator\\Machine.cs",
+              "ViewState": "AgIAAHsAAAAAAAAAAAAAwJAAAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T23:36:28.83Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

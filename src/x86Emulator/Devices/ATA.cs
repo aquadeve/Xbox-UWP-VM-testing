@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using x86Emulator.Configuration;
-using x86Emulator.ATADevice;
 using System.Threading.Tasks;
+using x86Emulator.ATADevice;
+using x86Emulator.Configuration;
 
 namespace x86Emulator.Devices
 {
@@ -20,18 +21,18 @@ namespace x86Emulator.Devices
         private byte[] deviceControl = new byte[2];
         private bool primarySelected;
 
-        public HardDisk[] HardDrives
+        public HardDrive[] HardDrives
         {
             get
             {
-                List<HardDisk> hdds = new List<HardDisk>();
+                List<HardDrive> hdds = new List<HardDrive>();
 
                 lock (diskDrives)
                 {
                     foreach (ATADrive drive in diskDrives)
                     {
-                        if (drive is HardDisk)
-                            hdds.Add(drive as HardDisk);
+                        if (drive is HardDrive)
+                            hdds.Add(drive as HardDrive);
                     }
 
                 }
@@ -50,7 +51,7 @@ namespace x86Emulator.Devices
             {
                 for(int i=0; i<diskDrives.Count; i++)
                 {
-                    if (diskDrives[i] is HardDisk)
+                    if (diskDrives[i] is HardDrive)
                     {
                         diskDrives.RemoveAt(i);
                     }
@@ -63,7 +64,7 @@ namespace x86Emulator.Devices
             {
                 for(int i=0; i<diskDrives.Count; i++)
                 {
-                    if (diskDrives[i] is CDROM)
+                    if (diskDrives[i] is CdRomDrive)
                     {
                         diskDrives.RemoveAt(i);
                     }
@@ -75,13 +76,26 @@ namespace x86Emulator.Devices
             diskDrives.Add(newDrive);
 
             primarySelected = true;
+            Debug.WriteLine($"[ATA] AddHDD called — total drives: {diskDrives.Count}. Added type: {newDrive.GetType().Name}");
         }
         public void AddCDROM(ATADrive newDrive)
         {
             diskDrives.Add(newDrive);
 
+            try
+            {
+                // Ensure the drive reports the ATAPI signature right away
+                newDrive.Reset();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[ATA] AddCDROM Reset exception: " + ex.Message);
+            }
+
             primarySelected = true;
+            Debug.WriteLine($"[ATA] AddCDROM attached as Primary Master (ATA0). Type: {newDrive.GetType().Name}");
         }
+
         public void Reset(int controller)
         {
             if (diskDrives.Count > 0)
@@ -107,6 +121,7 @@ namespace x86Emulator.Devices
 
         public void RunCommand(int controller, byte command)
         {
+            Debug.WriteLine($"[ATA] RunCommand(controller={controller}, command=0x{command:X2}) diskDrives.Count={diskDrives.Count} primarySelected={primarySelected}");
             ATADrive drive;
             if (diskDrives.Count > 0)
             {
@@ -140,7 +155,7 @@ namespace x86Emulator.Devices
                 case 0x1f0:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if(diskDrives[0] is HardDisk)
+                        if(diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -152,7 +167,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -167,7 +182,7 @@ namespace x86Emulator.Devices
                 case 0x172:
                     if (primarySelected && diskDrives.Count > 2)
                     {
-                        if (diskDrives[2] is HardDisk)
+                        if (diskDrives[2] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -179,7 +194,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 2)
                     {
-                        if (diskDrives[3] is HardDisk)
+                        if (diskDrives[3] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -194,7 +209,7 @@ namespace x86Emulator.Devices
                 case 0x1f2:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -206,7 +221,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -221,7 +236,7 @@ namespace x86Emulator.Devices
                 case 0x173:
                     if (primarySelected && diskDrives.Count > 2)
                     {
-                        if (diskDrives[2] is HardDisk)
+                        if (diskDrives[2] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -233,7 +248,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 3)
                     {
-                        if (diskDrives[3] is HardDisk)
+                        if (diskDrives[3] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -248,7 +263,7 @@ namespace x86Emulator.Devices
                 case 0x1f3:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -260,7 +275,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -275,7 +290,7 @@ namespace x86Emulator.Devices
                 case 0x1f4:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -287,7 +302,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -302,7 +317,7 @@ namespace x86Emulator.Devices
                 case 0x1f5:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -314,7 +329,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -329,7 +344,7 @@ namespace x86Emulator.Devices
                 case 0x1f7:
                     if (primarySelected && diskDrives.Count > 1)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -341,7 +356,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -352,7 +367,7 @@ namespace x86Emulator.Devices
                         return (byte)diskDrives[1].Status;
                     }else if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -380,7 +395,7 @@ namespace x86Emulator.Devices
                 case 0x1f0:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -392,7 +407,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -408,7 +423,7 @@ namespace x86Emulator.Devices
                 case 0x172:
                     if (primarySelected && diskDrives.Count > 2)
                     {
-                        if (diskDrives[2] is HardDisk)
+                        if (diskDrives[2] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -420,7 +435,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 3)
                     {
-                        if (diskDrives[3] is HardDisk)
+                        if (diskDrives[3] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -434,7 +449,7 @@ namespace x86Emulator.Devices
                 case 0x1f2:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -446,7 +461,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -460,7 +475,7 @@ namespace x86Emulator.Devices
                 case 0x173:
                     if (primarySelected && diskDrives.Count > 2)
                     {
-                        if (diskDrives[2] is HardDisk)
+                        if (diskDrives[2] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -472,7 +487,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 3)
                     {
-                        if (diskDrives[2] is HardDisk)
+                        if (diskDrives[2] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -486,7 +501,7 @@ namespace x86Emulator.Devices
                 case 0x1f3:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -498,7 +513,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -512,7 +527,7 @@ namespace x86Emulator.Devices
                 case 0x1f4:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -524,7 +539,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -538,7 +553,7 @@ namespace x86Emulator.Devices
                 case 0x1f5:
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -550,7 +565,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -569,7 +584,7 @@ namespace x86Emulator.Devices
 
                     if (primarySelected && diskDrives.Count > 2)
                     {
-                        if (diskDrives[2] is HardDisk)
+                        if (diskDrives[2] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -581,7 +596,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 3)
                     {
-                        if (diskDrives[3] is HardDisk)
+                        if (diskDrives[3] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -600,7 +615,7 @@ namespace x86Emulator.Devices
 
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if (diskDrives[0] is HardDisk)
+                        if (diskDrives[0] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -612,7 +627,7 @@ namespace x86Emulator.Devices
                     }
                     else if (diskDrives.Count > 1)
                     {
-                        if (diskDrives[1] is HardDisk)
+                        if (diskDrives[1] is HardDrive)
                         {
                             SystemConfig.IO_HDDCall();
                         }
@@ -624,6 +639,7 @@ namespace x86Emulator.Devices
                     }
                     break;
                 case 0x1f7:
+                    Debug.WriteLine($"[ATA] Port write 0x1f7 value=0x{value:X2}");
                     RunCommand(0, (byte)value);
                     break;
                 case 0x3f6:

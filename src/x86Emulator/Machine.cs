@@ -1,4 +1,5 @@
 ﻿using System;
+
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -15,6 +16,8 @@ using Windows.ApplicationModel;
 using System.Threading.Tasks;
 using x86Emulator.Configuration;
 using x86Emulator.ATADevice;
+
+
 
 namespace x86Emulator
 {
@@ -71,6 +74,7 @@ namespace x86Emulator
         }
         public Machine(CanvasAnimatedControl uiForm)
         {
+
             BIOSImageFile = SystemConfig.MachineResources.bios.BOCHS.resourcesFile;
             VGABIOSImageFile = SystemConfig.MachineResources.bios.VGA.resourcesFile;
 
@@ -82,6 +86,169 @@ namespace x86Emulator
             keyboard = new KeyboardDevice();
             mouse = new MouseDevice();
             ataDevice = new ATA();
+            // Attach HDD and CD-ROM to ATA controller
+            try
+            {
+
+                // Load HDD image from Resources (or wherever it's defined)
+                if (!string.IsNullOrEmpty(Resources.HddImagePath) && File.Exists(Resources.HddImagePath))
+                {
+                    var hdd = new HardDrive(Resources.HddImagePath);
+                    ataDevice.AddHDD(new HardDrive(Resources.HddImagePath));
+                    // 0 = Primary Master
+                    Debug.WriteLine($"HDD attached: {Resources.HddImagePath}");
+                }
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+              // Load CD-ROM image from Resources
+if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+{
+    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+    ataDevice.AddCDROM(cdrom);
+    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+}
+else
+{
+    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+}
+
+                // Load CD-ROM image from Resources
+                if (!string.IsNullOrEmpty(Resources.CdRomImagePath) && File.Exists(Resources.CdRomImagePath))
+                {
+                    var cdrom = new CdRomDrive(Resources.CdRomImagePath);
+                    ataDevice.AddCDROM(cdrom);
+                    Debug.WriteLine($"[CDROM] Attached: {Resources.CdRomImagePath}");
+                }
+                else
+                {
+                    Debug.WriteLine("[CDROM] No ISO image found or invalid path.");
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error attaching ATA devices: {ex.Message}");
+            }
 
             PrepareMachine(uiForm);
         }
@@ -101,7 +268,7 @@ namespace x86Emulator
             {
                 if (hdd.isValid())
                 {
-                    ATADrive newHDD = new HardDisk();
+                    ATADrive newHDD = new HardDrive();
                     await newHDD.LoadImage(hdd.resourcesFile);
                     ataDevice.AddHDD(newHDD);
                 }
@@ -111,12 +278,21 @@ namespace x86Emulator
         public async Task SyncCDROMs()
         {
             ataDevice.ClearCDROM();
-            //Append CDROM
-            if (SystemConfig.MachineResources.cdrom.CDROM[0].isValid())
+
+            // Grab the CD-ROM resource from your config
+            var cdromResource = SystemConfig.MachineResources.cdrom.CDROM[0].resourcesFile;
+
+            if (cdromResource != null)
             {
-                ATADrive newCD = new CDROM();
-                await newCD.LoadImage(SystemConfig.MachineResources.cdrom.CDROM[0].resourcesFile);
-                ataDevice.AddHDD(newCD);
+                var cdrom = new CdRomDrive();
+                await cdrom.LoadImage(cdromResource);
+                ataDevice.AddCDROM(cdrom);
+
+                System.Diagnostics.Debug.WriteLine($"[CDROM] ISO loaded: {cdromResource.Path}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[CDROM] No ISO selected or configured.");
             }
         }
 

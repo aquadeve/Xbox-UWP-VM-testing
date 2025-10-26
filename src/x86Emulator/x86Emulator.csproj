@@ -11,8 +11,8 @@
     <AssemblyName>x86Emulator</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
     <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
-    <TargetPlatformVersion Condition=" '$(TargetPlatformVersion)' == '' ">10.0.16299.0</TargetPlatformVersion>
-    <TargetPlatformMinVersion>10.0.14393.0</TargetPlatformMinVersion>
+    <TargetPlatformVersion Condition=" '$(TargetPlatformVersion)' == '' ">10.0.26100.0</TargetPlatformVersion>
+    <TargetPlatformMinVersion>10.0.16299.0</TargetPlatformMinVersion>
     <MinimumVisualStudioVersion>14</MinimumVisualStudioVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{A5A43C5B-DE2A-4C0C-9213-0A381AF9435A};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -25,7 +25,7 @@
     <AppxBundlePlatforms>x64|arm</AppxBundlePlatforms>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
     <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
-    <PackageCertificateThumbprint>F82E841A54364310E4FFAC332C361E2AF62D3AB0</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>0361903D4C53D8439600D336E7FE902CC8B60937</PackageCertificateThumbprint>
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <PackageCertificateKeyFile />
   </PropertyGroup>
@@ -142,9 +142,6 @@
     <Compile Include="Configuration\SystemConfig.cs" />
     <Compile Include="CPU\Arithmetic.cs" />
     <Compile Include="ATADevice\ATADrive.cs" />
-    <Compile Include="ATADevice\CDROM.cs" />
-    <Compile Include="ATADevice\Enums.cs" />
-    <Compile Include="ATADevice\HardDisk.cs" />
     <Compile Include="ATADevice\Structs.cs" />
     <Compile Include="CPU\BCD.cs" />
     <Compile Include="CPU\BitByte.cs" />
@@ -157,9 +154,12 @@
     <Compile Include="CPU\InputOutput.cs" />
     <Compile Include="CPU\Logic.cs" />
     <Compile Include="Devices\ATA.cs" />
+    <Compile Include="Devices\CdRomDrive.cs" />
     <Compile Include="Devices\CMOS.cs" />
     <Compile Include="Devices\DMA.cs" />
     <Compile Include="Devices\Floppy.cs" />
+    <Compile Include="Devices\HardDrive.cs" />
+    <Compile Include="Devices\IBlockDevice.cs" />
     <Compile Include="Devices\IDevice.cs" />
     <Compile Include="Devices\Mouse.cs" />
     <Compile Include="Devices\Keyboard.cs" />
