@@ -327,9 +327,40 @@ namespace x86Emulator.GUI.WIN2D
 
         public override async Task Cycle()
         {
+            if (vgaDevice.IsChain4Mode)
+                await CycleMode13h();
+            else if (vgaDevice.IsGraphicsMode)
+                await CycleMode12h();
+            else
+                await CycleTextMode();
+        }
+
+        /// <summary>
+        /// Text mode rendering (80×25 characters, 16 colours via VGA attribute controller).
+        /// Reads the font glyph data from 0xA0000 and the character/attribute buffer from 0xB8000.
+        /// </summary>
+        private async Task CycleTextMode()
+        {
+            const int textWidth = 640;
+            const int textHeight = 400;
+
+            if (Width != textWidth || Height != textHeight)
+            {
+                Width = textWidth;
+                Height = textHeight;
+                CurrentGeometry = new GameGeometry()
+                {
+                    BaseHeight = (uint)textHeight,
+                    MaxHeight = (uint)textHeight,
+                    BaseWidth = (uint)textWidth,
+                    MaxWidth = (uint)textWidth,
+                    AspectRatio = 1.6f
+                };
+            }
+
             var fontBuffer = new byte[0x2000];
             var displayBuffer = new byte[0xfa0];
-            Color[] data = new Color[Width * Height];
+            Color[] data = new Color[textWidth * textHeight];
 
             x86Emulator.Memory.BlockRead(0xa0000, fontBuffer, fontBuffer.Length);
             x86Emulator.Memory.BlockRead(0xb8000, displayBuffer, displayBuffer.Length);
@@ -339,26 +370,112 @@ namespace x86Emulator.GUI.WIN2D
                 int currChar = displayBuffer[i];
                 int fontOffset = currChar * 32;
                 byte attribute = displayBuffer[i + 1];
-                int y = i / 160 * 16; // height
+                int y = i / 160 * 16;
 
                 Color foreColour = vgaDevice.GetColour(attribute & 0xf);
                 Color backColour = vgaDevice.GetColour((attribute >> 4) & 0xf);
 
                 for (var f = fontOffset; f < fontOffset + 16; f++)
                 {
-                    int x = ((i % 160) / 2) * 8; // width
+                    int x = ((i % 160) / 2) * 8;
 
                     for (var j = 7; j >= 0; j--)
                     {
                         if (((fontBuffer[f] >> j) & 0x1) != 0)
-                            data[y * Width + x] = foreColour;
+                            data[y * textWidth + x] = foreColour;
                         else
-                            data[y * Width + x] = backColour;
+                            data[y * textWidth + x] = backColour;
                         x++;
                     }
                     y++;
                 }
             }
+
+            await UpdateOutput(data);
+        }
+
+        /// <summary>
+        /// Mode 13h rendering: 320×200, 256 colours, linear packed-pixel framebuffer at 0xA0000.
+        /// Each byte in the framebuffer is a direct index into the 256-entry DAC palette.
+        /// This is the standard mode used by DOS games (DOOM, Quake, etc.).
+        /// </summary>
+        private async Task CycleMode13h()
+        {
+            const int gfxWidth = 320;
+            const int gfxHeight = 200;
+
+            if (Width != gfxWidth || Height != gfxHeight)
+            {
+                Width = gfxWidth;
+                Height = gfxHeight;
+                CurrentGeometry = new GameGeometry()
+                {
+                    BaseHeight = (uint)gfxHeight,
+                    MaxHeight = (uint)gfxHeight,
+                    BaseWidth = (uint)gfxWidth,
+                    MaxWidth = (uint)gfxWidth,
+                    AspectRatio = 1.6f
+                };
+            }
+
+            var frameBuffer = new byte[gfxWidth * gfxHeight];
+            x86Emulator.Memory.BlockRead(0xa0000, frameBuffer, frameBuffer.Length);
+
+            Color[] data = new Color[gfxWidth * gfxHeight];
+            for (int i = 0; i < frameBuffer.Length; i++)
+                data[i] = vgaDevice.GetDACColor(frameBuffer[i]);
+
+            await UpdateOutput(data);
+        }
+
+        /// <summary>
+        /// Mode 12h rendering: 640×480, 16 colours, 4-plane memory layout at 0xA0000.
+        /// Since this emulator does not implement VGA plane-select multiplexing at the memory
+        /// level, each byte at 0xA0000 is treated as a packed bitmask for one plane.
+        /// Bit 7 = leftmost pixel, bit 0 = rightmost.  Each set bit is rendered with palette
+        /// colour 15 (bright white in default EGA/VGA palette); clear bits use colour 0 (black).
+        /// This is a best-effort approximation that works for simple graphics and text-over-graphics
+        /// scenarios without requiring full planar emulation.
+        /// </summary>
+        private async Task CycleMode12h()
+        {
+            const int gfxWidth = 640;
+            const int gfxHeight = 480;
+            const int bytesPerRow = gfxWidth / 8;        // 80 bytes per scanline
+            const int totalBytes = bytesPerRow * gfxHeight; // 38400 bytes – fits in 64 KB VGA window
+
+            if (Width != gfxWidth || Height != gfxHeight)
+            {
+                Width = gfxWidth;
+                Height = gfxHeight;
+                CurrentGeometry = new GameGeometry()
+                {
+                    BaseHeight = (uint)gfxHeight,
+                    MaxHeight = (uint)gfxHeight,
+                    BaseWidth = (uint)gfxWidth,
+                    MaxWidth = (uint)gfxWidth,
+                    AspectRatio = (float)gfxWidth / gfxHeight
+                };
+            }
+
+            var rawBuffer = new byte[totalBytes];
+            x86Emulator.Memory.BlockRead(0xa0000, rawBuffer, totalBytes);
+
+            Color fgColor = vgaDevice.GetDACColor(15); // bright white
+            Color bgColor = vgaDevice.GetDACColor(0);  // black
+
+            Color[] data = new Color[gfxWidth * gfxHeight];
+            for (int byteIdx = 0; byteIdx < totalBytes; byteIdx++)
+            {
+                byte b = rawBuffer[byteIdx];
+                int pixelBase = byteIdx * 8;
+                // Bit 7 = leftmost pixel (pixel offset 0), bit 0 = rightmost (pixel offset 7)
+                for (int bit = 7; bit >= 0; bit--)
+                {
+                    data[pixelBase + (7 - bit)] = ((b >> bit) & 1) != 0 ? fgColor : bgColor;
+                }
+            }
+
             await UpdateOutput(data);
         }
 

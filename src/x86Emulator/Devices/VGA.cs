@@ -15,7 +15,7 @@ namespace x86Emulator.Devices
 
         private readonly int[] portsUsed = {
                                                0x3b4, 0x3b5, 0x3ba, 0x3c0, 0x3c1, 0x3c2, 0x3c4, 0x3c5, 0x3c7, 0x3c8, 0x3c9,
-                                               0x3ca, 0x3cc, 0x3d4, 0x3d5, 0x3da
+                                               0x3ca, 0x3cc, 0x3ce, 0x3cf, 0x3d4, 0x3d5, 0x3da
                                            };
 
         private readonly MemoryMapRegion[] memoryMap = {
@@ -28,6 +28,7 @@ namespace x86Emulator.Devices
         private readonly byte[] dacColour;
         private readonly byte[] attributeControl;
         private readonly byte[] crtControl;
+        private readonly byte[] gcRegisters;
 
         private byte miscOutputRegister;
         private byte featureControl;
@@ -35,6 +36,7 @@ namespace x86Emulator.Devices
         private byte dacAddress;
         private byte attributeControlAddress;
         private byte crtControlAddress;
+        private byte gcAddress;
         private byte currColor;
         private bool attributeControlFlipFlop;
 
@@ -48,6 +50,19 @@ namespace x86Emulator.Devices
             get { return memoryMap; }
         }
 
+        /// <summary>
+        /// True when the VGA sequencer is in Chain-4 mode (bit 3 of SequencerMemoryMode register).
+        /// Chain-4 enables the 256-colour packed-pixel linear framebuffer used by Mode 13h and
+        /// most DOS games.
+        /// </summary>
+        public bool IsChain4Mode => (sequencer[4] & 0x08) != 0;
+
+        /// <summary>
+        /// True when the Graphics Controller Miscellaneous register (index 6) indicates that
+        /// the active memory map begins at A000:0000 (the standard graphics-mode aperture).
+        /// </summary>
+        public bool IsGraphicsMode => (gcRegisters[6] & 0x01) != 0;
+
         public VGA()
         {
             sequencer = new byte[5];
@@ -57,11 +72,23 @@ namespace x86Emulator.Devices
             attributeControlFlipFlop = false;
             attributeControl = new byte[0x15];
             crtControl = new byte[0x19];
+            gcRegisters = new byte[9];
         }
 
+        /// <summary>Returns the text-mode colour for the given attribute nibble (palette-mapped).</summary>
         public Color GetColour(int index)
         {
             return dacPalette[attributeControl[index]];
+        }
+
+        /// <summary>
+        /// Returns the DAC colour for the given palette index directly.
+        /// Used when rendering packed-pixel graphics modes (e.g. Mode 13h) where each
+        /// framebuffer byte is a direct index into the 256-entry DAC palette.
+        /// </summary>
+        public Color GetDACColor(int index)
+        {
+            return dacPalette[index & 0xFF];
         }
 
         public uint Read(ushort addr, int size)
@@ -100,6 +127,10 @@ namespace x86Emulator.Devices
                     ret = dacColour[currColor];
                     break;
                 case 0x3c0:
+                    break;
+                case 0x3cf:
+                    if (gcAddress < gcRegisters.Length)
+                        ret = gcRegisters[gcAddress];
                     break;
                 default:
                     System.Diagnostics.Debugger.Break();
@@ -160,6 +191,13 @@ namespace x86Emulator.Devices
                     break;
                 case 0x3c7:
                     dacAddress = (byte)value;
+                    break;
+                case 0x3ce:
+                    gcAddress = (byte)value;
+                    break;
+                case 0x3cf:
+                    if (gcAddress < gcRegisters.Length)
+                        gcRegisters[gcAddress] = (byte)value;
                     break;
                 default:
                     System.Diagnostics.Debugger.Break();
