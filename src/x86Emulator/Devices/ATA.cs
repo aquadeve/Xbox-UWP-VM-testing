@@ -108,9 +108,12 @@ namespace x86Emulator.Devices
                 }
                 else
                 {
-                    diskDrives[3].Reset();
-                    if (diskDrives.Count > 1)
-                        diskDrives[4].Reset();
+                    // Drive index mapping: 0=primary master, 1=primary slave,
+                    //                     2=secondary master, 3=secondary slave
+                    if (diskDrives.Count > 2)
+                        diskDrives[2].Reset();
+                    if (diskDrives.Count > 3)
+                        diskDrives[3].Reset();
                 }
             }
             else
@@ -152,237 +155,205 @@ namespace x86Emulator.Devices
         {
             switch (addr)
             {
-                case 0x1f0:
+                // ── Primary controller ────────────────────────────────────────────────
+
+                case 0x1f0: // Data register (primary master or slave)
                     if (primarySelected && diskDrives.Count > 0)
                     {
-                        if(diskDrives[0] is HardDrive)
-                        {
+                        if (diskDrives[0] is HardDrive)
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[0].SectorBuffer;
                     }
                     else if (diskDrives.Count > 1)
                     {
                         if (diskDrives[1] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[1].SectorBuffer;
                     }
-                    else
-                        return 0;
-                case 0x172:
-                    if (primarySelected && diskDrives.Count > 2)
-                    {
-                        if (diskDrives[2] is HardDrive)
-                        {
-                            SystemConfig.IO_HDDCall();
-                        }
-                        else
-                        {
-                            SystemConfig.IO_CDCall();
-                        }
-                        return diskDrives[2].SectorCount;
-                    }
-                    else if (diskDrives.Count > 2)
-                    {
-                        if (diskDrives[3] is HardDrive)
-                        {
-                            SystemConfig.IO_HDDCall();
-                        }
-                        else
-                        {
-                            SystemConfig.IO_CDCall();
-                        }
-                        return diskDrives[3].SectorCount;
-                    }
-                    else
-                        return 0;
-                case 0x1f2:
+                    return 0;
+
+                case 0x1f1: // Error register
+                    if (primarySelected && diskDrives.Count > 0)
+                        return (byte)diskDrives[0].Error;
+                    else if (diskDrives.Count > 1)
+                        return (byte)diskDrives[1].Error;
+                    return 0;
+
+                case 0x1f2: // Sector count
                     if (primarySelected && diskDrives.Count > 0)
                     {
                         if (diskDrives[0] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[0].SectorCount;
                     }
                     else if (diskDrives.Count > 1)
                     {
                         if (diskDrives[1] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[1].SectorCount;
                     }
-                    else
-                        return 0;
-                case 0x173:
-                    if (primarySelected && diskDrives.Count > 2)
-                    {
-                        if (diskDrives[2] is HardDrive)
-                        {
-                            SystemConfig.IO_HDDCall();
-                        }
-                        else
-                        {
-                            SystemConfig.IO_CDCall();
-                        }
-                        return diskDrives[2].SectorNumber;
-                    }
-                    else if (diskDrives.Count > 3)
-                    {
-                        if (diskDrives[3] is HardDrive)
-                        {
-                            SystemConfig.IO_HDDCall();
-                        }
-                        else
-                        {
-                            SystemConfig.IO_CDCall();
-                        }
-                        return diskDrives[3].SectorNumber;
-                    }
-                    else
-                        return 0;
-                case 0x1f3:
+                    return 0;
+
+                case 0x1f3: // Sector number / LBA low
                     if (primarySelected && diskDrives.Count > 0)
                     {
                         if (diskDrives[0] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[0].SectorNumber;
                     }
                     else if (diskDrives.Count > 1)
                     {
                         if (diskDrives[1] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[1].SectorNumber;
                     }
-                    else
-                        return 0;
-                case 0x1f4:
+                    return 0;
+
+                case 0x1f4: // Cylinder low / LBA mid
                     if (primarySelected && diskDrives.Count > 0)
                     {
                         if (diskDrives[0] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[0].CylinderLow;
                     }
                     else if (diskDrives.Count > 1)
                     {
                         if (diskDrives[1] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[1].CylinderLow;
                     }
-                    else
-                        return 0;
-                case 0x1f5:
+                    return 0;
+
+                case 0x1f5: // Cylinder high / LBA high
                     if (primarySelected && diskDrives.Count > 0)
                     {
                         if (diskDrives[0] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[0].CylinderHigh;
                     }
                     else if (diskDrives.Count > 1)
                     {
                         if (diskDrives[1] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return diskDrives[1].CylinderHigh;
                     }
-                    else
-                        return 0;
-                case 0x1f7:
-                    if (primarySelected && diskDrives.Count > 1)
+                    return 0;
+
+                case 0x1f6: // Drive/head register
+                    if (primarySelected && diskDrives.Count > 0)
+                        return diskDrives[0].DriveHead;
+                    else if (diskDrives.Count > 1)
+                        return diskDrives[1].DriveHead;
+                    return 0;
+
+                case 0x1f7: // Status register (primary)
+                    if (primarySelected && diskDrives.Count > 0)
                     {
                         if (diskDrives[0] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return (byte)diskDrives[0].Status;
                     }
                     else if (diskDrives.Count > 1)
                     {
                         if (diskDrives[1] is HardDrive)
-                        {
                             SystemConfig.IO_HDDCall();
-                        }
                         else
-                        {
                             SystemConfig.IO_CDCall();
-                        }
                         return (byte)diskDrives[1].Status;
-                    }else if (primarySelected && diskDrives.Count > 0)
-                    {
-                        if (diskDrives[0] is HardDrive)
-                        {
-                            SystemConfig.IO_HDDCall();
-                        }
-                        else
-                        {
-                            SystemConfig.IO_CDCall();
-                        }
-                        return (byte)diskDrives[0].Status;
                     }
-                    else
-                        return 0;
-                case 0x3f6:
+                    return 0;
+
+                case 0x3f6: // Alternate status / device control (primary)
                     return deviceControl[0];
+
+                // ── Secondary controller ──────────────────────────────────────────────
+
+                case 0x170: // Data register (secondary)
+                    if (diskDrives.Count > 2)
+                    {
+                        if (diskDrives[2] is HardDrive)
+                            SystemConfig.IO_HDDCall();
+                        else
+                            SystemConfig.IO_CDCall();
+                        return diskDrives[2].SectorBuffer;
+                    }
+                    return 0;
+
+                case 0x171: // Error register (secondary)
+                    if (diskDrives.Count > 2)
+                        return (byte)diskDrives[2].Error;
+                    return 0;
+
+                case 0x172: // Sector count (secondary)
+                    if (diskDrives.Count > 2)
+                    {
+                        if (diskDrives[2] is HardDrive)
+                            SystemConfig.IO_HDDCall();
+                        else
+                            SystemConfig.IO_CDCall();
+                        return diskDrives[2].SectorCount;
+                    }
+                    return 0;
+
+                case 0x173: // Sector number (secondary)
+                    if (diskDrives.Count > 2)
+                    {
+                        if (diskDrives[2] is HardDrive)
+                            SystemConfig.IO_HDDCall();
+                        else
+                            SystemConfig.IO_CDCall();
+                        return diskDrives[2].SectorNumber;
+                    }
+                    return 0;
+
+                case 0x174: // Cylinder low (secondary)
+                    if (diskDrives.Count > 2)
+                        return diskDrives[2].CylinderLow;
+                    return 0;
+
+                case 0x175: // Cylinder high (secondary)
+                    if (diskDrives.Count > 2)
+                        return diskDrives[2].CylinderHigh;
+                    return 0;
+
+                case 0x176: // Drive/head (secondary)
+                    if (diskDrives.Count > 2)
+                        return diskDrives[2].DriveHead;
+                    return 0;
+
+                case 0x177: // Status register (secondary) – 0xFF = no device
+                    if (diskDrives.Count > 2)
+                        return (byte)diskDrives[2].Status;
+                    return 0xFF;
+
+                case 0x376: // Alternate status (secondary) – 0xFF = no device
+                    if (diskDrives.Count > 2)
+                        return deviceControl[1];
+                    return 0xFF;
+
                 default:
-                    System.Diagnostics.Debugger.Break();
                     break;
             }
             return 0;

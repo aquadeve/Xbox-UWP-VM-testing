@@ -146,7 +146,12 @@ namespace x86Emulator.Devices
                         case 0x35:          /* High byte */
                             return (byte)((((SystemConfig.MemorySize - 16) * 1024 * 1024) >> 16) >> 8);
                         case 0x3d:
-                            return 0x21;  /* 1st and 2nd boot devices */
+                            // Boot sequence: low nibble = 1st device, high nibble = 2nd device
+                            // 1=floppy, 2=HDD, 3=CDROM
+                            if (ataDevice.HardDrives.Length > 0)
+                                return 0x12;  // HDD first, floppy second
+                            else
+                                return 0x21;  // Floppy first (no HDD present)
                         case 0x38:
                             return 0x00;  /* 3rd boot device */
                         case 0x39:        /* HDD0 translation mode, we're going for LBA */
