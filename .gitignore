@@ -4,3 +4,4 @@
 
 /src/x86Emulator/.vs
 *.vsidx
+.nuget/
