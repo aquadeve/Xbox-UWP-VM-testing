@@ -7,7 +7,7 @@
 
     For more information on package manifest files, see http://go.microsoft.com/fwlink/?LinkID=241727
   -->
-  <Identity Name="x86Emulator-2694-4359-a4ce-393506a67b53" Publisher="CN=Hondo" Version="1.0.0.0" ProcessorArchitecture="x64" />
+  <Identity Name="x86Emulator-2694-4359-a4ce-393506a67b53" Publisher="CN=KantzJr" Version="1.0.0.0" ProcessorArchitecture="x64" />
   <mp:PhoneIdentity PhoneProductId="18487cdb-2694-4359-a4ce-393506a67b53" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>x86 Emulator</DisplayName>
@@ -158,6 +158,7 @@
   <build:Metadata>
     <build:Item Name="TargetFrameworkMoniker" Value=".NETCore,Version=v5.0" />
     <build:Item Name="VisualStudio" Version="17.0" />
+    <build:Item Name="VisualStudioEdition" Value="Microsoft Visual Studio Community 2022" />
     <build:Item Name="OperatingSystem" Version="10.0.19041.1 (WinBuild.160101.0800)" />
     <build:Item Name="Microsoft.Build.AppxPackage.dll" Version="17.14.40598.3191" />
     <build:Item Name="ProjectGUID" Value="{D6031E45-3DF5-4EDA-9866-E4E45EB6EA12}" />

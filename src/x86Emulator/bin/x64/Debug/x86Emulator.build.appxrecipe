@@ -9,7 +9,7 @@
     <SolutionConfiguration>Debug|x64</SolutionConfiguration>
     <PackageArchitecture>x64</PackageArchitecture>
     <PackageIdentityName>18487cdb-2694-4359-a4ce-393506a67b53</PackageIdentityName>
-    <PackageIdentityPublisher>CN=Hondo</PackageIdentityPublisher>
+    <PackageIdentityPublisher>CN=KantzJr</PackageIdentityPublisher>
     <IntermediateOutputPath>C:\Users\KantzJr\Documents\GitHub\Xbox-UWP-VM-testing\src\x86Emulator\obj\x64\Debug\</IntermediateOutputPath>
     <RemoteDeploymentType></RemoteDeploymentType>
     <PackageRegistrationPath></PackageRegistrationPath>
@@ -46,7 +46,7 @@
     <AppxPackagedFile Include="C:\Users\KantzJr\.nuget\packages\xam.plugins.settings\3.1.1\lib\UAP10\Plugin.Settings.dll">
       <PackagePath>Plugin.Settings.dll</PackagePath>
     </AppxPackagedFile>
-    <AppxPackagedFile Include="C:\Users\KantzJr\Documents\GitHub\Xbox-UWP-VM-testing\src\x86DisasmUWP\bin\x64\Debug\x86DisasmUWP.dll">
+    <AppxPackagedFile Include="C:\Users\KantzJr\Documents\GitHub\Xbox-UWP-VM-testing\src\x86DisasmUWP\bin\Debug\x86DisasmUWP.dll">
       <PackagePath>x86DisasmUWP.dll</PackagePath>
     </AppxPackagedFile>
     <AppxPackagedFile Include="C:\Users\KantzJr\Documents\GitHub\Xbox-UWP-VM-testing\src\x64\Debug\x86Native\x86Native.dll">
@@ -267,6 +267,12 @@
     </AppxPackagedFile>
     <AppxPackagedFile Include="C:\Users\KantzJr\Documents\GitHub\Xbox-UWP-VM-testing\src\x86Emulator\bin\x64\Debug\x86Emulator.xr.xml">
       <PackagePath>x86Emulator.xr.xml</PackagePath>
+    </AppxPackagedFile>
+    <AppxPackagedFile Include="C:\Users\KantzJr\Documents\GitHub\Xbox-UWP-VM-testing\src\x86Emulator\bin\x64\Debug\App.xbf">
+      <PackagePath>App.xbf</PackagePath>
+    </AppxPackagedFile>
+    <AppxPackagedFile Include="C:\Users\KantzJr\Documents\GitHub\Xbox-UWP-VM-testing\src\x86Emulator\bin\x64\Debug\MainPage.xbf">
+      <PackagePath>MainPage.xbf</PackagePath>
     </AppxPackagedFile>
     <AppxPackagedFile Include="C:\Program Files %28x86%29\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.UniversalCRT.Debug\10.0.26100.0\\redist\Debug\X64\ucrtbased.dll">
       <PackagePath>ucrtbased.dll</PackagePath>

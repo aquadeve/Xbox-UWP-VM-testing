@@ -84,6 +84,16 @@ namespace x86Emulator.Devices
 
             diskDrives[slot] = newDrive;
             masterSelected[slot / 2] = true;
+
+            try
+            {
+                newDrive.Reset();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[ATA] AddHDD Reset exception: " + ex.Message);
+            }
+
             Debug.WriteLine($"[ATA] AddHDD attached to slot {slot}. Type: {newDrive.GetType().Name}");
         }
 
@@ -300,7 +310,7 @@ namespace x86Emulator.Devices
                     if (drive != null)
                     {
                         drive.Status &= ~DeviceStatus.Busy;
-                        drive.Status |= DeviceStatus.Ready;
+                        drive.Status |= DeviceStatus.Ready | DeviceStatus.SeekComplete;
                     }
                 }
             }

@@ -23,6 +23,7 @@ namespace x86Emulator.ATADevice
     public enum DeviceError : byte
     {
         None = 0x00,
+        DiagnosticPassed = 0x01,
         Aborted = 0x04,
         MediaChange = 0x08,
         IDNotFound = 0x10,

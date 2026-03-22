@@ -35,7 +35,7 @@ namespace x86Emulator.ATADevice
                     FileShare.Read, SectorSize * 8, FileOptions.RandomAccess);
                 diskStream = IsVhd(path) ? VhdStream.OpenOrPassThrough(raw) : raw;
                 UpdateGeometry();
-                Status = DeviceStatus.Ready;
+                Reset();
             }
         }
 
@@ -58,7 +58,7 @@ namespace x86Emulator.ATADevice
                 }
                 diskStream = IsVhd(file.Name) ? VhdStream.OpenOrPassThrough(raw) : raw;
                 UpdateGeometry();
-                Status = DeviceStatus.Ready;
+                Reset();
             }
         }
 
@@ -82,18 +82,30 @@ namespace x86Emulator.ATADevice
 
         public override void Reset()
         {
-            Status = DeviceStatus.Ready;
-            Error = DeviceError.None;
+            SetIdleState();
             CylinderLow = 0;
             CylinderHigh = 0;
             SectorNumber = 1;
             SectorCount = 1;
+            DriveHead = (byte)((DriveHead & 0x10) | 0xA0);
+            sectorBuffer = null;
+            bufferIndex = 0;
+            transferWordCount = 0;
+            pendingWriteLBA = 0;
+            pendingWriteCount = 0;
+            writeTransferActive = false;
         }
 
         public override void RunCommand(byte command)
         {
             switch (command)
             {
+                case 0x08: // DEVICE RESET
+                case 0x10: // RECALIBRATE
+                case 0x70: // SEEK
+                    CompleteSeekLikeCommand();
+                    break;
+
                 case 0x20: // READ SECTOR(S)
                 case 0x21: // READ SECTOR(S) WITHOUT RETRY
                     ReadSectors();
@@ -110,8 +122,19 @@ namespace x86Emulator.ATADevice
 
                 case 0x91: // INITIALIZE DEVICE PARAMETERS (set geometry – accept and ignore)
                 case 0xC6: // SET MULTIPLE MODE
-                    Status = DeviceStatus.Ready;
-                    Error = DeviceError.None;
+                case 0xE7: // FLUSH CACHE
+                case 0xEA: // FLUSH CACHE EXT
+                case 0xEF: // SET FEATURES
+                    SetIdleState();
+                    break;
+
+                case 0x40: // READ VERIFY SECTOR(S)
+                case 0x41: // READ VERIFY SECTOR(S) WITHOUT RETRY
+                    VerifySectors();
+                    break;
+
+                case 0x90: // EXECUTE DEVICE DIAGNOSTIC
+                    ExecuteDeviceDiagnostic();
                     break;
 
                 default:
@@ -161,7 +184,7 @@ namespace x86Emulator.ATADevice
             WriteIdentifyString(data, 27, 40, "GPTEMU Virtual Hard Drive               "); // Model
 
             data[47] = 0x8001; // READ/WRITE MULTIPLE: max 1 sector per interrupt
-            data[49] = 0x0300; // Capabilities: LBA supported (bit 9), DMA supported (bit 8)
+            data[49] = 0x0200; // Capabilities: LBA supported (bit 9)
             data[50] = 0x4000; // Reserved (bit 14 must be 1 per ATA spec)
             data[51] = 0x0200; // PIO timing mode
             data[53] = 0x0007; // Words 54-58, 64-70, 88 are valid
@@ -178,7 +201,7 @@ namespace x86Emulator.ATADevice
             data[60] = (ushort)(lbaSectors & 0xFFFF); // LBA total sectors (low)
             data[61] = (ushort)(lbaSectors >> 16);    // LBA total sectors (high)
 
-            data[63] = 0x0007; // Multiword DMA modes 0-2 supported
+            data[63] = 0x0000; // DMA not supported by the emulator yet
             data[64] = 0x0003; // Advanced PIO modes 3-4 supported
             data[65] = 120;
             data[66] = 120;
@@ -190,10 +213,10 @@ namespace x86Emulator.ATADevice
             data[84] = 0x4000;
             data[85] = 0x4000;
             data[87] = 0x4000;
-            data[88] = 0x003F; // Ultra DMA modes 0-5 supported
+            data[88] = 0x0000; // Ultra DMA not supported
 
             StartReadTransfer(data);
-            Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Status = DeviceStatus.DataRequest | DeviceStatus.Ready | DeviceStatus.SeekComplete;
             Error = DeviceError.None;
         }
 
@@ -235,7 +258,7 @@ namespace x86Emulator.ATADevice
             Buffer.BlockCopy(buffer, 0, words, 0, totalBytes);
             StartReadTransfer(words);
 
-            Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Status = DeviceStatus.DataRequest | DeviceStatus.Ready | DeviceStatus.SeekComplete;
             Error = DeviceError.None;
             writeTransferActive = false;
         }
@@ -262,7 +285,7 @@ namespace x86Emulator.ATADevice
 
             // Prepare buffer for the host to fill; FinishCommand() writes it to disk.
             StartWriteTransfer(pendingWriteCount * SectorSize / 2);
-            Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Status = DeviceStatus.DataRequest | DeviceStatus.Ready | DeviceStatus.SeekComplete;
             Error = DeviceError.None;
             writeTransferActive = true;
         }
@@ -271,7 +294,7 @@ namespace x86Emulator.ATADevice
         {
             if (!writeTransferActive)
             {
-                Status = DeviceStatus.Ready;
+                SetIdleState();
                 return;
             }
 
@@ -286,13 +309,69 @@ namespace x86Emulator.ATADevice
                 diskStream.Write(buffer, 0, totalBytes);
                 diskStream.Flush();
             }
-            Status = DeviceStatus.Ready;
-            Error = DeviceError.None;
+            SetIdleState();
         }
 
         public override void FinishRead()
         {
-            Status = DeviceStatus.Ready;
+            SetIdleState();
+        }
+
+        private void CompleteSeekLikeCommand()
+        {
+            if (diskStream == null)
+            {
+                Status = DeviceStatus.Error;
+                Error = DeviceError.Aborted;
+                return;
+            }
+
+            VerifyAddressOnly();
+        }
+
+        private void VerifySectors()
+        {
+            if (diskStream == null)
+            {
+                Status = DeviceStatus.Error;
+                Error = DeviceError.Aborted;
+                return;
+            }
+
+            VerifyAddressOnly();
+        }
+
+        private void VerifyAddressOnly()
+        {
+            uint lba = GetLBA();
+            int count = GetEffectiveSectorCount();
+            long byteOffset = (long)lba * SectorSize;
+
+            if (byteOffset + (long)count * SectorSize > diskStream.Length)
+            {
+                Status = DeviceStatus.Error;
+                Error = DeviceError.IDNotFound;
+                return;
+            }
+
+            SetIdleState();
+        }
+
+        private void ExecuteDeviceDiagnostic()
+        {
+            SectorCount = 1;
+            SectorNumber = 1;
+            CylinderLow = 0;
+            CylinderHigh = 0;
+            Status = DeviceStatus.Ready | DeviceStatus.SeekComplete;
+            Error = DeviceError.DiagnosticPassed;
+            writeTransferActive = false;
+        }
+
+        private void SetIdleState()
+        {
+            Status = DeviceStatus.Ready | DeviceStatus.SeekComplete;
+            Error = DeviceError.None;
         }
 
         private static void ReadExact(Stream stream, byte[] buffer, int count)
