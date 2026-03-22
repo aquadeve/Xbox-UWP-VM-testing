@@ -311,6 +311,9 @@ namespace x86Emulator.Devices
                     {
                         drive.Status &= ~DeviceStatus.Busy;
                         drive.Status |= DeviceStatus.Ready | DeviceStatus.SeekComplete;
+                        // ATA spec: after SRST is deasserted the master must report
+                        // Diagnostic Passed (0x01) in the Error register.
+                        drive.Error = DeviceError.DiagnosticPassed;
                     }
                 }
             }

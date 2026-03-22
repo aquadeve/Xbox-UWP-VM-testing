@@ -93,7 +93,6 @@ namespace x86Emulator
                 // Load HDD image from Resources (or wherever it's defined)
                 if (!string.IsNullOrEmpty(Resources.HddImagePath) && File.Exists(Resources.HddImagePath))
                 {
-                    var hdd = new HardDrive(Resources.HddImagePath);
                     ataDevice.AddHDD(new HardDrive(Resources.HddImagePath));
                     // 0 = Primary Master
                     Debug.WriteLine($"HDD attached: {Resources.HddImagePath}");

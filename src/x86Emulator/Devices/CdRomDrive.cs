@@ -70,7 +70,9 @@ namespace x86Emulator.ATADevice
             CylinderLow = 0x14;
             CylinderHigh = 0xEB;
             Status = DeviceStatus.Ready | DeviceStatus.SeekComplete;
-            Error = DeviceError.None;
+            // ATA spec: after SRST/DEVICE RESET the master must set Error = 0x01
+            // (Diagnostic Passed). Bochs BIOS reads this to verify the device.
+            Error = DeviceError.DiagnosticPassed;
             awaitingPacket = false;
             ClearSense();
             Debug.WriteLine("[CDROM] Reset complete - ATAPI signature set (0xEB14)");

@@ -83,6 +83,9 @@ namespace x86Emulator.ATADevice
         public override void Reset()
         {
             SetIdleState();
+            // ATA spec: after SRST/DEVICE RESET the master must set Error = 0x01
+            // (Diagnostic Passed). Bochs BIOS reads this register to verify the drive.
+            Error = DeviceError.DiagnosticPassed;
             CylinderLow = 0;
             CylinderHigh = 0;
             SectorNumber = 1;
