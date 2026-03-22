@@ -162,6 +162,15 @@ namespace x86Emulator.Devices
             int controller = GetControllerIndex(addr);
             ATADrive drive = GetSelectedDrive(controller);
 
+            // Alternate Status register (0x3F6 = primary, 0x376 = secondary).
+            // Must be checked before the command-block switch because both share
+            // the same low nibble (0x06) as the Drive/Head register (0x1F6/0x176).
+            if (addr == 0x3f6 || addr == 0x376)
+            {
+                TrackIo(drive);
+                return drive != null ? (uint)(byte)drive.Status : 0xFFu;
+            }
+
             switch (addr & 0x0f)
             {
                 case 0x0:
@@ -190,12 +199,6 @@ namespace x86Emulator.Devices
                     break;
             }
 
-            if (addr == 0x3f6 || addr == 0x376)
-            {
-                TrackIo(drive);
-                return drive != null ? (uint)(byte)drive.Status : 0xFFu;
-            }
-
             return 0;
         }
 
@@ -203,6 +206,15 @@ namespace x86Emulator.Devices
         {
             int controller = GetControllerIndex(addr);
             ATADrive drive = GetSelectedDrive(controller);
+
+            // Device Control register (0x3F6 = primary, 0x376 = secondary).
+            // Must be checked before the command-block switch because both share
+            // the same low nibble (0x06) as the Drive/Head register (0x1F6/0x176).
+            if (addr == 0x3f6 || addr == 0x376)
+            {
+                HandleDeviceControlWrite(controller, (byte)value);
+                return;
+            }
 
             switch (addr & 0x0f)
             {
@@ -247,9 +259,6 @@ namespace x86Emulator.Devices
                 default:
                     break;
             }
-
-            if (addr == 0x3f6 || addr == 0x376)
-                HandleDeviceControlWrite(controller, (byte)value);
         }
 
         private static int GetControllerIndex(ushort addr)
