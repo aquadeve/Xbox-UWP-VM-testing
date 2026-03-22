@@ -32,6 +32,11 @@ namespace x86Emulator.GUI.WIN2D
         private static int Width = 640;
         private static int Height = 400;
 
+        // Hardware-accelerated GPU passthrough renderer.  Streams VGA framebuffer
+        // data directly into a persistent D3D11 DYNAMIC texture via Map/Unmap,
+        // avoiding the per-frame CanvasBitmap allocation used by the legacy path.
+        private GpuPassthrough gpuPassthrough;
+
         public static bool InterpolationLinear = false;
         public static bool FitScreen = false;
         public static bool DumpFrames = false;
@@ -116,6 +121,14 @@ namespace x86Emulator.GUI.WIN2D
             {
 
             }
+
+            try
+            {
+                gpuPassthrough?.Dispose();
+            }
+            catch (Exception)
+            {
+            }
         }
 
         public Matrix3x2 transformMatrix;
@@ -173,35 +186,72 @@ namespace x86Emulator.GUI.WIN2D
         int trueWidth = 0;
         int trueHeight = 0;
         StorageFolder dumpFramesFolder;
+
+        /// <summary>
+        /// Updates the render target with new pixel data.
+        ///
+        /// Fast path: when the GPU passthrough renderer is initialised the
+        /// <paramref name="data"/> array is converted to BGRA and streamed
+        /// directly into the persistent D3D11 DYNAMIC texture via Map / Unmap,
+        /// avoiding a per-frame GPU texture allocation.
+        ///
+        /// Legacy fallback: when the GPU passthrough is not yet ready, or when
+        /// frame dumping is active, the original <c>CanvasBitmap.CreateFromColors</c>
+        /// path is used so that frame saves continue to work.
+        /// </summary>
         public async Task UpdateOutput(Color[] data)
         {
-            var device = renderPanel.Device;
             try
             {
                 RenderTargetViewport.Width = Width;
                 RenderTargetViewport.Height = Height;
 
+                // --- Hardware-accelerated path (GPU passthrough) ---
+                if (gpuPassthrough.IsInitialized && !DumpFrames)
+                {
+                    var bitmap = gpuPassthrough.UploadColorFrame(data, (int)Width, (int)Height);
+                    if (bitmap != null)
+                    {
+                        RenderTarget = bitmap;
+                        return;
+                    }
+                    // Fall through to the legacy path if the upload failed.
+                }
+
+                // --- Legacy path (allocates a new CanvasBitmap each frame) ---
                 RenderTarget = CanvasBitmap.CreateFromColors(renderPanel, data, (int)Width, (int)Height, 96, CanvasAlphaMode.Ignore);
                 if (DumpFrames)
                 {
-                    if (dumpFramesFolder == null)
-                    {
-                        var root = await ApplicationData.Current.TemporaryFolder.CreateFolderAsync("DumpFrames", CreationCollisionOption.OpenIfExists);
-                        var time = DateTime.Now.ToString().Replace("/", "_").Replace("\\", "_").Replace(":", "_").Replace(" ", "_");
-
-                        dumpFramesFolder = await root.CreateFolderAsync(time, CreationCollisionOption.ReplaceExisting);
-                    }
-
-                    StorageFile tempFile = null;
-                    tempFile = await dumpFramesFolder.CreateFileAsync("x86Emulator.png", CreationCollisionOption.GenerateUniqueName);
-
-                    using (var saveStream = (await tempFile.OpenStreamForWriteAsync()).AsRandomAccessStream())
-                    {
-                        await RenderTarget.SaveAsync(saveStream, CanvasBitmapFileFormat.Png);
-                    }
+                    await SaveCurrentFrameAsync();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
+            {
+            }
+        }
+
+        /// <summary>
+        /// Saves the current <see cref="RenderTarget"/> bitmap to the DumpFrames
+        /// folder as a PNG file.
+        /// </summary>
+        private async Task SaveCurrentFrameAsync()
+        {
+            try
+            {
+                if (dumpFramesFolder == null)
+                {
+                    var root = await ApplicationData.Current.TemporaryFolder.CreateFolderAsync("DumpFrames", CreationCollisionOption.OpenIfExists);
+                    var time = DateTime.Now.ToString().Replace("/", "_").Replace("\\", "_").Replace(":", "_").Replace(" ", "_");
+                    dumpFramesFolder = await root.CreateFolderAsync(time, CreationCollisionOption.ReplaceExisting);
+                }
+
+                StorageFile tempFile = await dumpFramesFolder.CreateFileAsync("x86Emulator.png", CreationCollisionOption.GenerateUniqueName);
+                using (var saveStream = (await tempFile.OpenStreamForWriteAsync()).AsRandomAccessStream())
+                {
+                    await RenderTarget.SaveAsync(saveStream, CanvasBitmapFileFormat.Png);
+                }
+            }
+            catch (Exception)
             {
             }
         }
@@ -290,6 +340,11 @@ namespace x86Emulator.GUI.WIN2D
             RenderPanel = panel;
             Memory = new byte[Width * Height * 4]; // BGRA
 
+            // Create the GPU passthrough device bound to the emulated VGA card.
+            // The underlying D3D11 renderer is initialised lazily in Init() once
+            // the Win2D device is guaranteed to be available.
+            gpuPassthrough = new GpuPassthrough(device);
+
             CurrentGeometry = new GameGeometry()
             {
                 BaseHeight = (uint)Height,
@@ -309,6 +364,20 @@ namespace x86Emulator.GUI.WIN2D
             if (renderPanel != null)
             {
                 RenderPanel.ClearColor = fillColor;
+
+                // Initialise the hardware GPU passthrough renderer using the
+                // Win2D canvas device that backs the render panel.
+                if (!gpuPassthrough.IsInitialized)
+                {
+                    try
+                    {
+                        gpuPassthrough.Initialize(renderPanel.Device);
+                    }
+                    catch (Exception)
+                    {
+                        // Fall back silently to the legacy CanvasBitmap path.
+                    }
+                }
             }
         }
 
@@ -398,6 +467,12 @@ namespace x86Emulator.GUI.WIN2D
         /// Mode 13h rendering: 320×200, 256 colours, linear packed-pixel framebuffer at 0xA0000.
         /// Each byte in the framebuffer is a direct index into the 256-entry DAC palette.
         /// This is the standard mode used by DOS games (DOOM, Quake, etc.).
+        ///
+        /// Fast path: when the GPU passthrough renderer is active the palette lookup
+        /// and BGRA conversion are performed inside <see cref="GpuPassthrough"/> and
+        /// the result is streamed directly to a persistent D3D11 texture, avoiding
+        /// the per-frame <c>Color[]</c> allocation and <c>CanvasBitmap.CreateFromColors</c>
+        /// call used by the legacy path.
         /// </summary>
         private async Task CycleMode13h()
         {
@@ -421,6 +496,27 @@ namespace x86Emulator.GUI.WIN2D
             var frameBuffer = new byte[gfxWidth * gfxHeight];
             x86Emulator.Memory.BlockRead(0xa0000, frameBuffer, frameBuffer.Length);
 
+            // --- Hardware-accelerated GPU passthrough path ---
+            if (gpuPassthrough.IsInitialized && !DumpFrames)
+            {
+                try
+                {
+                    var bitmap = gpuPassthrough.UploadMode13hFrame(frameBuffer, gfxWidth, gfxHeight);
+                    if (bitmap != null)
+                    {
+                        RenderTargetViewport.Width = gfxWidth;
+                        RenderTargetViewport.Height = gfxHeight;
+                        RenderTarget = bitmap;
+                        return;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Fall through to the legacy path on error.
+                }
+            }
+
+            // --- Legacy path ---
             Color[] data = new Color[gfxWidth * gfxHeight];
             for (int i = 0; i < frameBuffer.Length; i++)
                 data[i] = vgaDevice.GetDACColor(frameBuffer[i]);
@@ -436,6 +532,9 @@ namespace x86Emulator.GUI.WIN2D
         /// colour 15 (bright white in default EGA/VGA palette); clear bits use colour 0 (black).
         /// This is a best-effort approximation that works for simple graphics and text-over-graphics
         /// scenarios without requiring full planar emulation.
+        ///
+        /// Fast path: when the GPU passthrough renderer is active the conversion is performed
+        /// inside <see cref="GpuPassthrough"/> and uploaded directly to the GPU texture.
         /// </summary>
         private async Task CycleMode12h()
         {
@@ -461,6 +560,27 @@ namespace x86Emulator.GUI.WIN2D
             var rawBuffer = new byte[totalBytes];
             x86Emulator.Memory.BlockRead(0xa0000, rawBuffer, totalBytes);
 
+            // --- Hardware-accelerated GPU passthrough path ---
+            if (gpuPassthrough.IsInitialized && !DumpFrames)
+            {
+                try
+                {
+                    var bitmap = gpuPassthrough.UploadMode12hFrame(rawBuffer, gfxWidth, gfxHeight);
+                    if (bitmap != null)
+                    {
+                        RenderTargetViewport.Width = gfxWidth;
+                        RenderTargetViewport.Height = gfxHeight;
+                        RenderTarget = bitmap;
+                        return;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Fall through to the legacy path on error.
+                }
+            }
+
+            // --- Legacy path ---
             Color fgColor = vgaDevice.GetDACColor(15); // bright white
             Color bgColor = vgaDevice.GetDACColor(0);  // black
 
