@@ -111,11 +111,14 @@ namespace x86Emulator.ATADevice
 
                 case 0x20: // READ SECTOR(S)
                 case 0x21: // READ SECTOR(S) WITHOUT RETRY
+                case 0x24: // READ SECTOR(S) EXT (LBA48 – treat as LBA28 for small disks)
+                case 0xC4: // READ MULTIPLE
                     ReadSectors();
                     break;
 
                 case 0x30: // WRITE SECTOR(S)
                 case 0x31: // WRITE SECTOR(S) WITHOUT RETRY
+                case 0xC5: // WRITE MULTIPLE
                     WriteSectors();
                     break;
 
@@ -141,7 +144,8 @@ namespace x86Emulator.ATADevice
                     break;
 
                 default:
-                    Status = DeviceStatus.Error;
+                    // ATA spec: after command abort the drive must still assert DRDY.
+                    Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                     Error = DeviceError.Aborted;
                     break;
             }
@@ -186,7 +190,7 @@ namespace x86Emulator.ATADevice
             WriteIdentifyString(data, 23,  8, "1.0     ");             // Firmware revision
             WriteIdentifyString(data, 27, 40, "GPTEMU Virtual Hard Drive               "); // Model
 
-            data[47] = 0x8001; // READ/WRITE MULTIPLE: max 1 sector per interrupt
+            data[47] = 0x0000; // READ/WRITE MULTIPLE not supported – prevents BIOS from using 0xC4
             data[49] = 0x0200; // Capabilities: LBA supported (bit 9)
             data[50] = 0x4000; // Reserved (bit 14 must be 1 per ATA spec)
             data[51] = 0x0200; // PIO timing mode
@@ -236,7 +240,9 @@ namespace x86Emulator.ATADevice
         {
             if (diskStream == null)
             {
-                Status = DeviceStatus.Error;
+                // ATA spec: even on error, DRDY must remain asserted so that
+                // ata_is_ready() in the BIOS still sees the drive as present.
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.Aborted;
                 return;
             }
@@ -247,15 +253,24 @@ namespace x86Emulator.ATADevice
 
             if (byteOffset + (long)count * SectorSize > diskStream.Length)
             {
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.IDNotFound;
                 return;
             }
 
             int totalBytes = count * SectorSize;
             byte[] buffer = new byte[totalBytes];
-            diskStream.Seek(byteOffset, SeekOrigin.Begin);
-            ReadExact(diskStream, buffer, totalBytes);
+            try
+            {
+                diskStream.Seek(byteOffset, SeekOrigin.Begin);
+                ReadExact(diskStream, buffer, totalBytes);
+            }
+            catch (IOException)
+            {
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
+                Error = DeviceError.Aborted;
+                return;
+            }
 
             ushort[] words = new ushort[totalBytes / 2];
             Buffer.BlockCopy(buffer, 0, words, 0, totalBytes);
@@ -270,7 +285,7 @@ namespace x86Emulator.ATADevice
         {
             if (diskStream == null)
             {
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.Aborted;
                 return;
             }
@@ -281,7 +296,7 @@ namespace x86Emulator.ATADevice
             long byteOffset = (long)pendingWriteLBA * SectorSize;
             if (byteOffset + (long)pendingWriteCount * SectorSize > diskStream.Length)
             {
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.IDNotFound;
                 return;
             }
@@ -324,7 +339,7 @@ namespace x86Emulator.ATADevice
         {
             if (diskStream == null)
             {
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.Aborted;
                 return;
             }
@@ -336,7 +351,7 @@ namespace x86Emulator.ATADevice
         {
             if (diskStream == null)
             {
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.Aborted;
                 return;
             }
@@ -352,7 +367,7 @@ namespace x86Emulator.ATADevice
 
             if (byteOffset + (long)count * SectorSize > diskStream.Length)
             {
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.IDNotFound;
                 return;
             }

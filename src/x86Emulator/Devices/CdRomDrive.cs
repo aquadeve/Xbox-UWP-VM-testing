@@ -95,7 +95,7 @@ namespace x86Emulator.ATADevice
                 default:
                     Debug.WriteLine($"[CDROM] Unsupported ATA command 0x{command:X2}");
                     SetSense(0x05, 0x20, 0x00);
-                    Status = DeviceStatus.Error;
+                    Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                     Error = DeviceError.Aborted;
                     break;
             }
@@ -194,7 +194,7 @@ namespace x86Emulator.ATADevice
                 default:
                     Debug.WriteLine($"[CDROM] Unsupported packet command 0x{command:X2}");
                     SetSense(0x05, 0x20, 0x00);
-                    Status = DeviceStatus.Error;
+                    Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                     Error = DeviceError.Aborted;
                     break;
             }
@@ -249,7 +249,7 @@ namespace x86Emulator.ATADevice
             if (isoStream == null)
             {
                 SetSense(0x02, 0x3A, 0x00);
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.Aborted;
                 return;
             }
@@ -269,7 +269,7 @@ namespace x86Emulator.ATADevice
             if (isoStream == null)
             {
                 SetSense(0x02, 0x3A, 0x00);
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.Aborted;
                 return;
             }
@@ -301,7 +301,7 @@ namespace x86Emulator.ATADevice
             if (isoStream == null)
             {
                 SetSense(0x02, 0x3A, 0x00);
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.Aborted;
                 return;
             }
@@ -331,7 +331,7 @@ namespace x86Emulator.ATADevice
             if (lba >= totalSectors || lba + count > totalSectors)
             {
                 SetSense(0x05, 0x21, 0x00);
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.IDNotFound;
                 return;
             }
@@ -340,7 +340,7 @@ namespace x86Emulator.ATADevice
             if (totalBytes > int.MaxValue)
             {
                 SetSense(0x05, 0x24, 0x00);
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.Aborted;
                 return;
             }
@@ -358,7 +358,7 @@ namespace x86Emulator.ATADevice
             {
                 Debug.WriteLine($"[CDROM] Read error: {ex.Message}");
                 SetSense(0x03, 0x11, 0x00);
-                Status = DeviceStatus.Error;
+                Status = DeviceStatus.Error | DeviceStatus.Ready | DeviceStatus.SeekComplete;
                 Error = DeviceError.BadBlock;
             }
         }
