@@ -1,0 +1,1 @@
+C:\Users\KantzJr\Documents\GitHub\Xbox-UWP-VM-testing\src\x86Emulator\AppPackages\x86Emulator_1.0.0.0_x64_Debug_Test\x86Emulator_1.0.0.0_x64_Debug.appx

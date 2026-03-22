@@ -43,6 +43,7 @@ namespace x86Emulator.ATADevice
 
         protected ushort[] sectorBuffer;
         protected int bufferIndex;
+        protected int transferWordCount;
 
         public ushort Cylinder
         {
@@ -54,32 +55,46 @@ namespace x86Emulator.ATADevice
             }
         }
 
+        protected void StartReadTransfer(ushort[] data)
+        {
+            sectorBuffer = data ?? Array.Empty<ushort>();
+            bufferIndex = 0;
+            transferWordCount = sectorBuffer.Length;
+        }
+
+        protected void StartWriteTransfer(int wordCount)
+        {
+            if (wordCount < 0)
+                wordCount = 0;
+
+            sectorBuffer = new ushort[wordCount];
+            bufferIndex = 0;
+            transferWordCount = sectorBuffer.Length;
+        }
+
         public ushort SectorBuffer
         {
             get
             {
-                ushort ret = sectorBuffer[bufferIndex++];
+                if (sectorBuffer == null || transferWordCount == 0 || bufferIndex >= transferWordCount)
+                    return 0;
 
-                if (Cylinder > 0 && (bufferIndex * 2) >= Cylinder)
-                {
-                    Status &= ~DeviceStatus.DataRequest;
-                    FinishRead();
-                    Cylinder = (ushort)((sectorBuffer.Length - bufferIndex) * 2);
-                }
-
-                if (bufferIndex >= sectorBuffer.Length)
+                ushort value = sectorBuffer[bufferIndex++];
+                if (bufferIndex >= transferWordCount)
                 {
                     Status &= ~DeviceStatus.DataRequest;
                     FinishRead();
                 }
 
-                return ret;
+                return value;
             }
             set
             {
-                sectorBuffer[bufferIndex++] = value;
+                if (sectorBuffer == null || transferWordCount == 0 || bufferIndex >= transferWordCount)
+                    return;
 
-                if (bufferIndex >= sectorBuffer.Length)
+                sectorBuffer[bufferIndex++] = value;
+                if (bufferIndex >= transferWordCount)
                 {
                     Status &= ~DeviceStatus.DataRequest;
                     FinishCommand();

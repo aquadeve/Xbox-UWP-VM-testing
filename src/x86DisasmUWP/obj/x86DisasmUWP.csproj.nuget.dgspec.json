@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj": {}
+    "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj": {
+    "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj",
+        "projectUniqueName": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj",
         "projectName": "x86DisasmUWP",
-        "projectPath": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj",
-        "packagesPath": "C:\\Users\\Hondo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\obj\\",
+        "projectPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj",
+        "packagesPath": "C:\\Users\\KantzJr\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\obj\\",
         "projectStyle": "PackageReference",
         "skipContentFileWrite": true,
         "UsingMicrosoftNETSdk": false,
@@ -20,7 +20,7 @@
           "C:\\Program Files (x86)\\Microsoft SDKs\\UWPNuGetPackages\\"
         ],
         "configFilePaths": [
-          "C:\\Users\\Hondo\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\KantzJr\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],

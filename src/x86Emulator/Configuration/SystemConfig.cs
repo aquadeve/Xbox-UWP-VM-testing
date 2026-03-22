@@ -17,15 +17,15 @@ namespace x86Emulator.Configuration
         public static EventHandler Notification;
         public static void IO_FloppyCall()
         {
-            IO_Floppy.Invoke(null, null);
+            IO_Floppy?.Invoke(null, null);
         }
         public static void IO_CDCall()
         {
-            IO_CDROM.Invoke(null, null);
+            IO_CDROM?.Invoke(null, null);
         }
         public static void IO_HDDCall()
         {
-            IO_HDD.Invoke(null, null);
+            IO_HDD?.Invoke(null, null);
         }
         public static void NotificationCall(string message = "")
         {

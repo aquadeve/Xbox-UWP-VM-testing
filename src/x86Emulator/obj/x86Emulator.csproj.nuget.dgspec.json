@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86Emulator\\x86Emulator.csproj": {}
+    "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Emulator\\x86Emulator.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj": {
+    "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj",
+        "projectUniqueName": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj",
         "projectName": "x86DisasmUWP",
-        "projectPath": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj",
-        "packagesPath": "C:\\Users\\Hondo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\obj\\",
+        "projectPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj",
+        "packagesPath": "C:\\Users\\KantzJr\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\obj\\",
         "projectStyle": "PackageReference",
         "skipContentFileWrite": true,
         "UsingMicrosoftNETSdk": false,
@@ -20,7 +20,7 @@
           "C:\\Program Files (x86)\\Microsoft SDKs\\UWPNuGetPackages\\"
         ],
         "configFilePaths": [
-          "C:\\Users\\Hondo\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\KantzJr\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -81,14 +81,14 @@
         }
       }
     },
-    "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86Emulator\\x86Emulator.csproj": {
+    "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Emulator\\x86Emulator.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86Emulator\\x86Emulator.csproj",
+        "projectUniqueName": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Emulator\\x86Emulator.csproj",
         "projectName": "x86Emulator",
-        "projectPath": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86Emulator\\x86Emulator.csproj",
-        "packagesPath": "C:\\Users\\Hondo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86Emulator\\obj\\",
+        "projectPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Emulator\\x86Emulator.csproj",
+        "packagesPath": "C:\\Users\\KantzJr\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Emulator\\obj\\",
         "projectStyle": "PackageReference",
         "skipContentFileWrite": true,
         "UsingMicrosoftNETSdk": false,
@@ -97,7 +97,7 @@
           "C:\\Program Files (x86)\\Microsoft SDKs\\UWPNuGetPackages\\"
         ],
         "configFilePaths": [
-          "C:\\Users\\Hondo\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\KantzJr\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -111,11 +111,11 @@
         "frameworks": {
           "uap10.0.16299": {
             "projectReferences": {
-              "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj": {
-                "projectPath": "C:\\Users\\Hondo\\Source\\Repos\\x86Emulator-UWP\\src\\x86DisasmUWP\\x86DisasmUWP.csproj"
+              "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj": {
+                "projectPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86DisasmUWP\\x86DisasmUWP.csproj"
               },
-              "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Native\\x86Native.vcxproj": {
-                "projectPath": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Native\\x86Native.vcxproj"
+              "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Native\\x86Native.vcxproj": {
+                "projectPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Native\\x86Native.vcxproj"
               }
             }
           }
@@ -185,17 +185,33 @@
         }
       }
     },
-    "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Native\\x86Native.vcxproj": {
+    "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Native\\x86Native.vcxproj": {
       "restore": {
-        "projectUniqueName": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Native\\x86Native.vcxproj",
+        "projectUniqueName": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Native\\x86Native.vcxproj",
         "projectName": "x86Native",
-        "projectPath": "C:\\Users\\Hondo\\source\\repos\\x86Emulator-UWP\\src\\x86Native\\x86Native.vcxproj",
+        "projectPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Native\\x86Native.vcxproj",
+        "packagesPath": "C:\\Users\\KantzJr\\.nuget\\packages\\",
+        "projectStyle": "PackagesConfig",
         "UsingMicrosoftNETSdk": false,
+        "configFilePaths": [
+          "C:\\Users\\KantzJr\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
         "frameworks": {
           "native": {
             "projectReferences": {}
           }
-        }
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low"
+        },
+        "packagesConfigPath": "C:\\Users\\KantzJr\\Documents\\GitHub\\Xbox-UWP-VM-testing\\src\\x86Native\\packages.config"
       },
       "frameworks": {
         "native": {}

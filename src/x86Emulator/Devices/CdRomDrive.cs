@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Storage;
@@ -10,13 +9,18 @@ namespace x86Emulator.ATADevice
 {
     public class CdRomDrive : ATADrive
     {
+        private const int SectorSize = 2048;
+
         private Stream isoStream;
         private readonly byte[] packetBuffer = new byte[12];
+        private bool awaitingPacket;
+        private byte senseKey;
+        private byte additionalSenseCode;
+        private byte additionalSenseQualifier;
 
         public CdRomDrive()
         {
             string isoPath = Resources.CdRomImagePath;
-
             if (string.IsNullOrEmpty(isoPath) || !File.Exists(isoPath))
             {
                 Debug.WriteLine("[CDROM] No ISO file found to load.");
@@ -26,6 +30,7 @@ namespace x86Emulator.ATADevice
             try
             {
                 isoStream = File.OpenRead(isoPath);
+                Status = DeviceStatus.Ready;
                 Debug.WriteLine($"[CDROM] ISO loaded: {isoPath}");
             }
             catch (Exception ex)
@@ -50,14 +55,14 @@ namespace x86Emulator.ATADevice
 
         public override async Task LoadImage(StorageFile filename)
         {
-            if (filename != null)
-            {
-                isoStream = await filename.OpenStreamForReadAsync();
-                Status = DeviceStatus.Ready;
-                Error = DeviceError.None;
-                Debug.WriteLine($"[CDROM] ISO loaded (UWP): {filename.Path}");
-                IdentifyPacketDevice();
-            }
+            if (filename == null)
+                return;
+
+            isoStream = await filename.OpenStreamForReadAsync();
+            Status = DeviceStatus.Ready;
+            Error = DeviceError.None;
+            ClearSense();
+            Debug.WriteLine($"[CDROM] ISO loaded (UWP): {filename.Path}");
         }
 
         public override void Reset()
@@ -66,6 +71,8 @@ namespace x86Emulator.ATADevice
             CylinderHigh = 0xEB;
             Status = DeviceStatus.Ready | DeviceStatus.SeekComplete;
             Error = DeviceError.None;
+            awaitingPacket = false;
+            ClearSense();
             Debug.WriteLine("[CDROM] Reset complete - ATAPI signature set (0xEB14)");
         }
 
@@ -74,51 +81,80 @@ namespace x86Emulator.ATADevice
             Debug.WriteLine($"[CDROM] RunCommand 0x{command:X2}");
             switch (command)
             {
-                case 0xA1: // IDENTIFY PACKET DEVICE
+                case 0x08:
+                    Reset();
+                    break;
+                case 0xA0:
+                    StartPacketCommand();
+                    break;
+                case 0xA1:
                     IdentifyPacketDevice();
                     break;
-
-                case 0xA0: // PACKET
-                    ExecutePacketCommand(packetBuffer);
-                    break;
-
                 default:
                     Debug.WriteLine($"[CDROM] Unsupported ATA command 0x{command:X2}");
+                    SetSense(0x05, 0x20, 0x00);
                     Status = DeviceStatus.Error;
                     Error = DeviceError.Aborted;
                     break;
             }
         }
 
-        private void IdentifyPacketDevice()
+        public override void FinishCommand()
         {
-            Debug.WriteLine("[CDROM] IdentifyPacketDevice called");
-            byte[] id = new byte[512];
-            ushort[] data = new ushort[256];
+            if (!awaitingPacket)
+            {
+                Status = DeviceStatus.Ready;
+                return;
+            }
 
-            data[0] = 0x8500; // ATAPI removable
-            WriteString(data, 10, 20, "CDROM0001");
-            WriteString(data, 23, 8, "1.00");
-            WriteString(data, 27, 40, "GPT-EMU ATAPI CD-ROM");
-            data[49] = 0x0200; // LBA
-            data[83] = 0x4000; // ATAPI supported
+            awaitingPacket = false;
+            Array.Clear(packetBuffer, 0, packetBuffer.Length);
+            if (sectorBuffer != null)
+            {
+                Buffer.BlockCopy(sectorBuffer, 0, packetBuffer, 0, Math.Min(packetBuffer.Length, sectorBuffer.Length * 2));
+            }
 
-            Buffer.BlockCopy(data, 0, id, 0, 512);
-            System.Diagnostics.Debug.WriteLine("[CDROM] Identify data first 8 words: " +
-            string.Join(" ", data.Take(8).Select(w => w.ToString("X4"))));
-
-            sectorBuffer = data;
-            bufferIndex = 0;
-            Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
-            Error = DeviceError.None;
-            System.Diagnostics.Debug.WriteLine("[CDROM] IdentifyPacketDevice ready, status=" + Status);
+            ExecutePacketCommand(packetBuffer);
         }
 
-        private void WriteString(ushort[] dest, int startWord, int length, string text)
+        public override void FinishRead()
         {
-            byte[] bytes = Encoding.ASCII.GetBytes(text.PadRight(length, ' '));
-            for (int i = 0; i < length / 2; i++)
-                dest[startWord + i] = (ushort)((bytes[i * 2 + 1] << 8) | bytes[i * 2]);
+            Status = DeviceStatus.Ready;
+        }
+
+        private void StartPacketCommand()
+        {
+            awaitingPacket = true;
+            StartWriteTransfer(packetBuffer.Length / 2);
+            Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Error = DeviceError.None;
+        }
+
+        private void IdentifyPacketDevice()
+        {
+            ushort[] data = new ushort[256];
+
+            data[0] = 0x8500; // ATAPI removable CD-ROM
+            data[49] = 0x0200; // LBA supported
+            data[50] = 0x4000;
+            data[53] = 0x0003;
+            data[63] = 0x0103;
+            data[64] = 0x0001;
+            data[71] = 30;
+            data[72] = 30;
+            data[80] = 0x003E;
+            data[82] = 0x4000;
+            data[83] = 0x4000;
+            data[85] = 0x4000;
+            data[87] = 0x4000;
+
+            WriteIdentifyString(data, 10, 20, "CDROM0001");
+            WriteIdentifyString(data, 23, 8, "1.00");
+            WriteIdentifyString(data, 27, 40, "GPT-EMU ATAPI CD-ROM");
+
+            StartReadTransfer(data);
+            Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Error = DeviceError.None;
         }
 
         private void ExecutePacketCommand(byte[] packet)
@@ -128,111 +164,294 @@ namespace x86Emulator.ATADevice
 
             switch (command)
             {
+                case 0x00:
+                    FinishPacketWithoutData();
+                    break;
+                case 0x03:
+                    SendRequestSense(packet);
+                    break;
                 case 0x12:
-                    SendInquiryResponse();
+                    SendInquiryResponse(packet);
+                    break;
+                case 0x1A:
+                    SendModeSense6(packet);
+                    break;
+                case 0x1E:
+                    FinishPacketWithoutData();
+                    break;
+                case 0x25:
+                    SendReadCapacity();
                     break;
                 case 0x28:
                 case 0xA8:
                     HandleReadPacket(packet);
                     break;
+                case 0x43:
+                    SendReadToc(packet);
+                    break;
                 default:
                     Debug.WriteLine($"[CDROM] Unsupported packet command 0x{command:X2}");
+                    SetSense(0x05, 0x20, 0x00);
                     Status = DeviceStatus.Error;
                     Error = DeviceError.Aborted;
                     break;
             }
         }
 
-        private void SendInquiryResponse()
+        private void SendInquiryResponse(byte[] packet)
         {
+            int allocationLength = packet[4];
             byte[] response = new byte[36];
             response[0] = 0x05; // CD/DVD
             response[1] = 0x80; // removable
             response[2] = 0x00;
             response[3] = 0x21;
-            Encoding.ASCII.GetBytes("GPT-EMU CDROM").CopyTo(response, 8);
+            response[4] = 31;
+            Encoding.ASCII.GetBytes("GPT-EMU ").CopyTo(response, 8);
+            Encoding.ASCII.GetBytes("ATAPI CD-ROM    ").CopyTo(response, 16);
+            Encoding.ASCII.GetBytes("1.00").CopyTo(response, 32);
+
+            SendDataToHost(TruncateResponse(response, allocationLength));
+            ClearSense();
+        }
+
+        private void SendModeSense6(byte[] packet)
+        {
+            int allocationLength = packet[4];
+            byte[] response = new byte[8];
+            response[0] = 0x06;
+            response[1] = 0x00;
+            response[2] = 0x80;
+            response[3] = 0x00;
+
+            SendDataToHost(TruncateResponse(response, allocationLength));
+            ClearSense();
+        }
+
+        private void SendRequestSense(byte[] packet)
+        {
+            int allocationLength = packet[4];
+            byte[] response = new byte[18];
+            response[0] = 0x70;
+            response[2] = senseKey;
+            response[7] = 10;
+            response[12] = additionalSenseCode;
+            response[13] = additionalSenseQualifier;
+
+            SendDataToHost(TruncateResponse(response, allocationLength));
+            ClearSense();
+        }
+
+        private void SendReadCapacity()
+        {
+            if (isoStream == null)
+            {
+                SetSense(0x02, 0x3A, 0x00);
+                Status = DeviceStatus.Error;
+                Error = DeviceError.Aborted;
+                return;
+            }
+
+            uint totalSectors = (uint)(isoStream.Length / SectorSize);
+            uint lastLba = totalSectors == 0 ? 0 : totalSectors - 1;
+            byte[] response = new byte[8];
+            WriteUInt32BE(response, 0, lastLba);
+            WriteUInt32BE(response, 4, SectorSize);
+
             SendDataToHost(response);
-            Debug.WriteLine("[CDROM] INQUIRY response sent");
+            ClearSense();
+        }
+
+        private void SendReadToc(byte[] packet)
+        {
+            if (isoStream == null)
+            {
+                SetSense(0x02, 0x3A, 0x00);
+                Status = DeviceStatus.Error;
+                Error = DeviceError.Aborted;
+                return;
+            }
+
+            bool msf = (packet[1] & 0x02) != 0;
+            int allocationLength = (packet[7] << 8) | packet[8];
+            uint totalSectors = (uint)(isoStream.Length / SectorSize);
+            uint leadOutLba = totalSectors;
+
+            byte[] response = new byte[20];
+            response[1] = 18;
+            response[2] = 1;
+            response[3] = 1;
+
+            response[5] = 0x14;
+            response[6] = 1;
+            WriteAddress(response, 8, 0, msf);
+
+            response[13] = 0x16;
+            response[14] = 0xAA;
+            WriteAddress(response, 16, leadOutLba, msf);
+
+            SendDataToHost(TruncateResponse(response, allocationLength));
+            ClearSense();
         }
 
         private void HandleReadPacket(byte[] packet)
         {
             if (isoStream == null)
             {
-                Debug.WriteLine("[CDROM] No ISO stream loaded - read failed");
+                SetSense(0x02, 0x3A, 0x00);
                 Status = DeviceStatus.Error;
                 Error = DeviceError.Aborted;
                 return;
             }
 
             byte opcode = packet[0];
-            uint lba = 0;
-            ushort count = 1;
+            uint lba = (uint)((packet[2] << 24) | (packet[3] << 16) | (packet[4] << 8) | packet[5]);
+            uint count;
 
             if (opcode == 0x28)
             {
-                lba = (uint)((packet[2] << 24) | (packet[3] << 16) | (packet[4] << 8) | packet[5]);
-                count = (ushort)((packet[7] << 8) | packet[8]);
+                count = (uint)((packet[7] << 8) | packet[8]);
+                if (count == 0)
+                    count = 0x10000;
             }
-            else if (opcode == 0xA8)
+            else
             {
-                lba = (uint)((packet[2] << 24) | (packet[3] << 16) | (packet[4] << 8) | packet[5]);
-                count = (ushort)((packet[6] << 8) | packet[7]);
+                count = (uint)((packet[6] << 24) | (packet[7] << 16) | (packet[8] << 8) | packet[9]);
             }
 
-            if (count == 0) count = 1;
-            int sectorSize = 2048;
-            byte[] buffer = new byte[sectorSize * count];
+            if (count == 0)
+            {
+                FinishPacketWithoutData();
+                return;
+            }
+
+            long totalSectors = isoStream.Length / SectorSize;
+            if (lba >= totalSectors || lba + count > totalSectors)
+            {
+                SetSense(0x05, 0x21, 0x00);
+                Status = DeviceStatus.Error;
+                Error = DeviceError.IDNotFound;
+                return;
+            }
+
+            long totalBytes = (long)count * SectorSize;
+            if (totalBytes > int.MaxValue)
+            {
+                SetSense(0x05, 0x24, 0x00);
+                Status = DeviceStatus.Error;
+                Error = DeviceError.Aborted;
+                return;
+            }
+
+            byte[] buffer = new byte[(int)totalBytes];
 
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[CDROM] READ request: LBA={lba}, count={count}");
-                isoStream.Seek(lba * sectorSize, SeekOrigin.Begin);
-                int bytesRead = isoStream.Read(buffer, 0, buffer.Length);
-
-                Debug.WriteLine($"[CDROM] READ({(opcode == 0xA8 ? 12 : 10)}) LBA={lba}, Count={count}, Bytes={bytesRead}");
-
-                if (bytesRead > 0)
-                {
-                    SendDataToHost(buffer);
-                    Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
-                    Error = DeviceError.None;
-                }
-                else
-                {
-                    Debug.WriteLine("[CDROM] End of ISO reached");
-                    Status = DeviceStatus.Error;
-                    Error = DeviceError.Uncorrectable;
-                }
+                isoStream.Seek((long)lba * SectorSize, SeekOrigin.Begin);
+                ReadExact(isoStream, buffer, buffer.Length);
+                SendDataToHost(buffer);
+                ClearSense();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[CDROM] Read error: {ex.Message}");
+                SetSense(0x03, 0x11, 0x00);
                 Status = DeviceStatus.Error;
                 Error = DeviceError.BadBlock;
             }
         }
 
+        private void FinishPacketWithoutData()
+        {
+            Status = DeviceStatus.Ready;
+            Error = DeviceError.None;
+            ClearSense();
+            CylinderLow = 0;
+            CylinderHigh = 0;
+        }
+
         private void SendDataToHost(byte[] data)
         {
-            int wordCount = data.Length / 2;
-            if (wordCount < 1) wordCount = 1;
-            sectorBuffer = new ushort[wordCount];
-            Buffer.BlockCopy(data, 0, sectorBuffer, 0, Math.Min(data.Length, wordCount * 2));
-            bufferIndex = 0;
+            int paddedLength = (data.Length + 1) & ~1;
+            byte[] padded = data;
+            if (paddedLength != data.Length)
+            {
+                padded = new byte[paddedLength];
+                Buffer.BlockCopy(data, 0, padded, 0, data.Length);
+            }
+
+            ushort[] words = new ushort[paddedLength / 2];
+            Buffer.BlockCopy(padded, 0, words, 0, paddedLength);
+            StartReadTransfer(words);
             Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Error = DeviceError.None;
+            CylinderLow = (byte)(paddedLength & 0xFF);
+            CylinderHigh = (byte)(paddedLength >> 8);
         }
 
-        public override void FinishCommand()
+        private void SetSense(byte key, byte asc, byte ascq)
         {
-            Status = DeviceStatus.Ready;
-            Debug.WriteLine("[CDROM] FinishCommand");
+            senseKey = key;
+            additionalSenseCode = asc;
+            additionalSenseQualifier = ascq;
         }
 
-        public override void FinishRead()
+        private void ClearSense()
         {
-            Status = DeviceStatus.Ready;
-            Debug.WriteLine("[CDROM] FinishRead");
+            SetSense(0x00, 0x00, 0x00);
+        }
+
+        private static void WriteIdentifyString(ushort[] dest, int startWord, int maxBytes, string text)
+        {
+            byte[] bytes = Encoding.ASCII.GetBytes(text.PadRight(maxBytes, ' '));
+            int wordCount = maxBytes / 2;
+            for (int i = 0; i < wordCount; i++)
+                dest[startWord + i] = (ushort)((bytes[i * 2] << 8) | bytes[i * 2 + 1]);
+        }
+
+        private static byte[] TruncateResponse(byte[] data, int allocationLength)
+        {
+            if (allocationLength <= 0 || allocationLength >= data.Length)
+                return data;
+
+            byte[] truncated = new byte[allocationLength];
+            Buffer.BlockCopy(data, 0, truncated, 0, allocationLength);
+            return truncated;
+        }
+
+        private static void WriteUInt32BE(byte[] buffer, int offset, uint value)
+        {
+            buffer[offset] = (byte)(value >> 24);
+            buffer[offset + 1] = (byte)(value >> 16);
+            buffer[offset + 2] = (byte)(value >> 8);
+            buffer[offset + 3] = (byte)value;
+        }
+
+        private static void WriteAddress(byte[] buffer, int offset, uint lba, bool msf)
+        {
+            if (msf)
+            {
+                uint address = lba + 150;
+                buffer[offset] = 0;
+                buffer[offset + 1] = (byte)(address / (60 * 75));
+                buffer[offset + 2] = (byte)((address / 75) % 60);
+                buffer[offset + 3] = (byte)(address % 75);
+                return;
+            }
+
+            WriteUInt32BE(buffer, offset, lba);
+        }
+
+        private static void ReadExact(Stream stream, byte[] buffer, int count)
+        {
+            int offset = 0;
+            while (offset < count)
+            {
+                int read = stream.Read(buffer, offset, count - offset);
+                if (read == 0)
+                    throw new EndOfStreamException("Unexpected end of ISO image.");
+                offset += read;
+            }
         }
     }
 }

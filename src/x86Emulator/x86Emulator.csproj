@@ -168,6 +168,7 @@
     <Compile Include="Devices\PIT8253.cs" />
     <Compile Include="Devices\GpuPassthrough.cs" />
     <Compile Include="Devices\VGA.cs" />
+    <Compile Include="Devices\VhdStream.cs" />
     <Compile Include="DynamicSettingsDialog.cs" />
     <Compile Include="GameGeometry.cs" />
     <Compile Include="GUI\WIN2D.cs" />

@@ -1,325 +1,367 @@
-// VhdStream.cs – transparent Stream wrapper for VHD disk images.
-//
-// Supports:
-//   • Fixed VHDs  – raw disk data followed by a 512-byte VHD footer.
-//   • Dynamic VHDs – footer copy, dynamic header, BAT, sparse data blocks, footer.
-//
-// The stream presented to callers always covers only the logical disk payload,
-// so sector arithmetic in HardDrive.cs stays unchanged.
-
 using System;
 using System.IO;
 using System.Text;
 
 namespace x86Emulator.Devices
 {
-    /// <summary>
-    /// A <see cref="Stream"/> wrapper that presents the raw disk payload of a VHD image
-    /// file, hiding the VHD container metadata (footer, dynamic header, BAT) from callers.
-    /// </summary>
     internal sealed class VhdStream : Stream
     {
-        // ── VHD constants ──────────────────────────────────────────────────────────
-        private const int  FooterSize         = 512;
-        private const int  DynHeaderSize      = 1024;
-        private const uint BatEntryFree       = 0xFFFFFFFF;
-        private const int  SectorSize         = 512;
+        private const int FooterSize = 512;
+        private const int DynamicHeaderSize = 1024;
+        private const uint BatEntryFree = 0xFFFFFFFF;
+        private const int SectorSize = 512;
 
-        private static readonly byte[] CookieFixed   = Encoding.ASCII.GetBytes("conectix");
-        private static readonly byte[] CookieDynamic = Encoding.ASCII.GetBytes("cxsparse");
+        private static readonly byte[] FooterCookie = Encoding.ASCII.GetBytes("conectix");
+        private static readonly byte[] DynamicCookie = Encoding.ASCII.GetBytes("cxsparse");
 
-        // VHD Disk Type constants (footer word at offset 60, big-endian)
-        private const uint DiskTypeFixed       = 2;
-        private const uint DiskTypeDynamic     = 3;
-        private const uint DiskTypeDifferencing = 4;
+        private const uint DiskTypeFixed = 2;
+        private const uint DiskTypeDynamic = 3;
 
-        // ── State ─────────────────────────────────────────────────────────────────
-        private readonly Stream _base;
-        private readonly bool   _ownsBase;
-        private readonly uint   _diskType;   // DiskTypeFixed / DiskTypeDynamic
-        private readonly long   _diskSize;   // logical disk size in bytes
+        private readonly Stream baseStream;
+        private readonly bool ownsBase;
+        private readonly uint diskType;
+        private readonly long diskSize;
 
-        // Dynamic-VHD fields (unused for fixed)
-        private uint[]  _bat;            // Block Allocation Table (sector offsets into file)
-        private int     _blockSectors;   // sectors per data block
-        private int     _bitmapSectors;  // bitmap sectors preceding each data block
+        private uint[] bat;
+        private int blockSectors;
+        private int bitmapSectors;
+        private int blockSizeBytes;
+        private long batOffset;
 
-        private long _position;
+        private long position;
 
-        // ── Factory ───────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Opens <paramref name="baseStream"/> as a VHD and returns a
-        /// <see cref="VhdStream"/> if a valid VHD footer is found, or
-        /// <paramref name="baseStream"/> unchanged when the file is not a VHD.
-        /// </summary>
-        public static Stream OpenOrPassThrough(Stream baseStream, bool ownsBase = true)
+        public static Stream OpenOrPassThrough(Stream sourceStream, bool ownsBase = true)
         {
-            if (baseStream == null) throw new ArgumentNullException(nameof(baseStream));
-            if (baseStream.Length < FooterSize) return baseStream;
+            if (sourceStream == null)
+                throw new ArgumentNullException(nameof(sourceStream));
+            if (sourceStream.Length < FooterSize)
+                return sourceStream;
 
-            byte[] footer = ReadFooter(baseStream);
-            if (!StartsWithCookie(footer, 0, CookieFixed))
-                return baseStream;   // not a VHD – use as-is
+            byte[] footer = ReadFooter(sourceStream);
+            if (!StartsWithCookie(footer, 0, FooterCookie))
+                return sourceStream;
 
             uint diskType = ReadUInt32BE(footer, 60);
             if (diskType != DiskTypeFixed && diskType != DiskTypeDynamic)
-                return baseStream;   // differencing or unknown – pass through unchanged
+                return sourceStream;
 
-            return new VhdStream(baseStream, ownsBase, footer, diskType);
+            return new VhdStream(sourceStream, ownsBase, footer, diskType);
         }
 
-        // ── Constructor ───────────────────────────────────────────────────────────
-
-        private VhdStream(Stream baseStream, bool ownsBase, byte[] footer, uint diskType)
+        private VhdStream(Stream sourceStream, bool ownsBase, byte[] footer, uint diskType)
         {
-            _base      = baseStream;
-            _ownsBase  = ownsBase;
-            _diskType  = diskType;
-            _diskSize  = (long)ReadUInt64BE(footer, 48);  // "Current Size" field
+            baseStream = sourceStream;
+            this.ownsBase = ownsBase;
+            this.diskType = diskType;
+            diskSize = (long)ReadUInt64BE(footer, 48);
 
             if (diskType == DiskTypeDynamic)
                 LoadDynamicStructures(footer);
         }
 
-        // ── Stream overrides ──────────────────────────────────────────────────────
-
-        public override bool CanRead  => true;
-        public override bool CanSeek  => true;
-        public override bool CanWrite => _base.CanWrite;
-        public override long Length   => _diskSize;
+        public override bool CanRead => true;
+        public override bool CanSeek => true;
+        public override bool CanWrite => baseStream.CanWrite;
+        public override long Length => diskSize;
 
         public override long Position
         {
-            get => _position;
+            get => position;
             set
             {
-                if (value < 0) throw new ArgumentOutOfRangeException(nameof(value));
-                _position = value;
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(value));
+                position = value;
             }
         }
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            long newPos = origin switch
+            long newPosition;
+            switch (origin)
             {
-                SeekOrigin.Begin   => offset,
-                SeekOrigin.Current => _position + offset,
-                SeekOrigin.End     => _diskSize + offset,
-                _                  => throw new ArgumentException("Invalid SeekOrigin", nameof(origin))
-            };
-            if (newPos < 0) throw new IOException("Seek before beginning of stream.");
-            _position = newPos;
-            return _position;
+                case SeekOrigin.Begin:
+                    newPosition = offset;
+                    break;
+                case SeekOrigin.Current:
+                    newPosition = position + offset;
+                    break;
+                case SeekOrigin.End:
+                    newPosition = diskSize + offset;
+                    break;
+                default:
+                    throw new ArgumentException("Invalid SeekOrigin", nameof(origin));
+            }
+
+            if (newPosition < 0)
+                throw new IOException("Seek before beginning of stream.");
+
+            position = newPosition;
+            return position;
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (buffer == null)  throw new ArgumentNullException(nameof(buffer));
-            if (offset < 0)      throw new ArgumentOutOfRangeException(nameof(offset));
-            if (count  < 0)      throw new ArgumentOutOfRangeException(nameof(count));
-            if (_position >= _diskSize) return 0;
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            if (position >= diskSize)
+                return 0;
 
-            int toRead = (int)Math.Min(count, _diskSize - _position);
-            int read   = 0;
+            int toRead = (int)Math.Min(count, diskSize - position);
+            int totalRead = 0;
 
-            while (read < toRead)
+            while (totalRead < toRead)
             {
-                int n = _diskType == DiskTypeDynamic
-                    ? ReadDynamic(buffer, offset + read, toRead - read)
-                    : ReadFixed(buffer,   offset + read, toRead - read);
-                if (n == 0) break;
-                read      += n;
-                _position += n;
+                int read = diskType == DiskTypeDynamic
+                    ? ReadDynamic(buffer, offset + totalRead, toRead - totalRead)
+                    : ReadFixed(buffer, offset + totalRead, toRead - totalRead);
+
+                if (read == 0)
+                    break;
+
+                totalRead += read;
+                position += read;
             }
-            return read;
+
+            return totalRead;
         }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if (buffer == null)  throw new ArgumentNullException(nameof(buffer));
-            if (offset < 0)      throw new ArgumentOutOfRangeException(nameof(offset));
-            if (count  < 0)      throw new ArgumentOutOfRangeException(nameof(count));
-            if (!CanWrite) throw new NotSupportedException("Stream is read-only.");
-            if (_position + count > _diskSize)
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            if (!CanWrite)
+                throw new NotSupportedException("Stream is read-only.");
+            if (position + count > diskSize)
                 throw new IOException("Write would exceed disk boundary.");
 
-            int written = 0;
-            while (written < count)
+            int totalWritten = 0;
+            while (totalWritten < count)
             {
-                int n = _diskType == DiskTypeDynamic
-                    ? WriteDynamic(buffer, offset + written, count - written)
-                    : WriteFixed(buffer,   offset + written, count - written);
-                if (n == 0) break;
-                written   += n;
-                _position += n;
+                int written = diskType == DiskTypeDynamic
+                    ? WriteDynamic(buffer, offset + totalWritten, count - totalWritten)
+                    : WriteFixed(buffer, offset + totalWritten, count - totalWritten);
+
+                if (written == 0)
+                    break;
+
+                totalWritten += written;
+                position += written;
             }
         }
 
-        public override void Flush() => _base.Flush();
+        public override void Flush() => baseStream.Flush();
 
         public override void SetLength(long value) =>
             throw new NotSupportedException("VhdStream does not support SetLength.");
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && _ownsBase)
-                _base.Dispose();
+            if (disposing && ownsBase)
+                baseStream.Dispose();
+
             base.Dispose(disposing);
         }
 
-        // ── Fixed VHD I/O ─────────────────────────────────────────────────────────
-        // For a fixed VHD the logical bytes sit at the same offsets in the file;
-        // the footer is simply appended and is never part of the logical disk.
-
-        private int ReadFixed(byte[] buf, int off, int count)
+        private int ReadFixed(byte[] buffer, int offset, int count)
         {
-            long clamp = Math.Min(count, _diskSize - _position);
-            _base.Seek(_position, SeekOrigin.Begin);
-            return _base.Read(buf, off, (int)clamp);
+            int bytesToRead = (int)Math.Min(count, diskSize - position);
+            baseStream.Seek(position, SeekOrigin.Begin);
+            return baseStream.Read(buffer, offset, bytesToRead);
         }
 
-        private int WriteFixed(byte[] buf, int off, int count)
+        private int WriteFixed(byte[] buffer, int offset, int count)
         {
-            _base.Seek(_position, SeekOrigin.Begin);
-            _base.Write(buf, off, count);
+            baseStream.Seek(position, SeekOrigin.Begin);
+            baseStream.Write(buffer, offset, count);
             return count;
         }
 
-        // ── Dynamic VHD I/O ───────────────────────────────────────────────────────
-
-        private int ReadDynamic(byte[] buf, int off, int count)
+        private int ReadDynamic(byte[] buffer, int offset, int count)
         {
-            long sectorIndex      = _position / SectorSize;
-            int  offsetInSector   = (int)(_position % SectorSize);
-            int  blockIndex       = (int)(sectorIndex / _blockSectors);
-            int  sectorInBlock    = (int)(sectorIndex % _blockSectors);
+            long sectorIndex = position / SectorSize;
+            int offsetInSector = (int)(position % SectorSize);
+            int blockIndex = (int)(sectorIndex / blockSectors);
+            int sectorInBlock = (int)(sectorIndex % blockSectors);
+            int bytesToRead = Math.Min(count, SectorSize - offsetInSector);
 
-            int  canRead  = Math.Min(count, SectorSize - offsetInSector);
-
-            uint batEntry = (blockIndex < _bat.Length) ? _bat[blockIndex] : BatEntryFree;
-
+            uint batEntry = blockIndex < bat.Length ? bat[blockIndex] : BatEntryFree;
             if (batEntry == BatEntryFree)
             {
-                // Unallocated block – logical zeros
-                Array.Clear(buf, off, canRead);
+                Array.Clear(buffer, offset, bytesToRead);
+                return bytesToRead;
             }
-            else
-            {
-                long fileOffset = (long)batEntry * SectorSize          // start of bitmap
-                                + (long)_bitmapSectors * SectorSize    // skip bitmap
-                                + (long)sectorInBlock  * SectorSize    // sector within block
-                                + offsetInSector;
-                _base.Seek(fileOffset, SeekOrigin.Begin);
-                int got = _base.Read(buf, off, canRead);
-                if (got < canRead)
-                    Array.Clear(buf, off + got, canRead - got);
-            }
-            return canRead;
-        }
-
-        private int WriteDynamic(byte[] buf, int off, int count)
-        {
-            long sectorIndex    = _position / SectorSize;
-            int  offsetInSector = (int)(_position % SectorSize);
-            int  blockIndex     = (int)(sectorIndex / _blockSectors);
-            int  sectorInBlock  = (int)(sectorIndex % _blockSectors);
-
-            int  canWrite = Math.Min(count, SectorSize - offsetInSector);
-
-            uint batEntry = (blockIndex < _bat.Length) ? _bat[blockIndex] : BatEntryFree;
-            if (batEntry == BatEntryFree)
-                throw new IOException($"Write to unallocated dynamic VHD block {blockIndex} is not supported.");
 
             long fileOffset = (long)batEntry * SectorSize
-                            + (long)_bitmapSectors * SectorSize
-                            + (long)sectorInBlock  * SectorSize
+                            + (long)bitmapSectors * SectorSize
+                            + (long)sectorInBlock * SectorSize
                             + offsetInSector;
-            _base.Seek(fileOffset, SeekOrigin.Begin);
-            _base.Write(buf, off, canWrite);
-            return canWrite;
+
+            baseStream.Seek(fileOffset, SeekOrigin.Begin);
+            int bytesRead = baseStream.Read(buffer, offset, bytesToRead);
+            if (bytesRead < bytesToRead)
+                Array.Clear(buffer, offset + bytesRead, bytesToRead - bytesRead);
+
+            return bytesToRead;
         }
 
-        // ── Dynamic-VHD structure loading ─────────────────────────────────────────
+        private int WriteDynamic(byte[] buffer, int offset, int count)
+        {
+            long sectorIndex = position / SectorSize;
+            int offsetInSector = (int)(position % SectorSize);
+            int blockIndex = (int)(sectorIndex / blockSectors);
+            int sectorInBlock = (int)(sectorIndex % blockSectors);
+            int bytesToWrite = Math.Min(count, SectorSize - offsetInSector);
+
+            uint batEntry = blockIndex < bat.Length ? bat[blockIndex] : BatEntryFree;
+            if (batEntry == BatEntryFree)
+                batEntry = AllocateDynamicBlock(blockIndex);
+
+            long fileOffset = (long)batEntry * SectorSize
+                            + (long)bitmapSectors * SectorSize
+                            + (long)sectorInBlock * SectorSize
+                            + offsetInSector;
+
+            baseStream.Seek(fileOffset, SeekOrigin.Begin);
+            baseStream.Write(buffer, offset, bytesToWrite);
+            return bytesToWrite;
+        }
 
         private void LoadDynamicStructures(byte[] footer)
         {
-            // The dynamic header is located at the Data Offset from the footer.
-            long dynHeaderOffset = (long)ReadUInt64BE(footer, 16);
+            long dynamicHeaderOffset = (long)ReadUInt64BE(footer, 16);
 
-            byte[] dynHeader = new byte[DynHeaderSize];
-            _base.Seek(dynHeaderOffset, SeekOrigin.Begin);
-            ReadExact(_base, dynHeader, 0, DynHeaderSize);
+            byte[] dynamicHeader = new byte[DynamicHeaderSize];
+            baseStream.Seek(dynamicHeaderOffset, SeekOrigin.Begin);
+            ReadExact(baseStream, dynamicHeader, 0, dynamicHeader.Length);
 
-            if (!StartsWithCookie(dynHeader, 0, CookieDynamic))
+            if (!StartsWithCookie(dynamicHeader, 0, DynamicCookie))
                 throw new InvalidDataException("Dynamic VHD header cookie mismatch.");
 
-            long batOffset    = (long)ReadUInt64BE(dynHeader, 16);
-            uint maxEntries   = ReadUInt32BE(dynHeader, 28);
-            uint blockSize    = ReadUInt32BE(dynHeader, 32);   // bytes per data block
+            batOffset = (long)ReadUInt64BE(dynamicHeader, 16);
+            uint maxEntries = ReadUInt32BE(dynamicHeader, 28);
+            uint blockSize = ReadUInt32BE(dynamicHeader, 32);
 
-            _blockSectors  = (int)(blockSize / SectorSize);
+            blockSizeBytes = (int)blockSize;
+            blockSectors = (int)(blockSize / SectorSize);
 
-            // Bitmap: ceil(blockSectors / 8) bytes, rounded up to a 512-byte boundary.
-            int bitmapBytes   = (_blockSectors + 7) / 8;
-            _bitmapSectors = (bitmapBytes + SectorSize - 1) / SectorSize;
+            int bitmapBytes = (blockSectors + 7) / 8;
+            bitmapSectors = (bitmapBytes + SectorSize - 1) / SectorSize;
 
-            // Read BAT
-            _bat = new uint[maxEntries];
+            bat = new uint[maxEntries];
             byte[] batRaw = new byte[maxEntries * 4];
-            _base.Seek(batOffset, SeekOrigin.Begin);
-            ReadExact(_base, batRaw, 0, batRaw.Length);
-            for (int i = 0; i < (int)maxEntries; i++)
-                _bat[i] = ReadUInt32BE(batRaw, i * 4);
+            baseStream.Seek(batOffset, SeekOrigin.Begin);
+            ReadExact(baseStream, batRaw, 0, batRaw.Length);
+
+            for (int i = 0; i < bat.Length; i++)
+                bat[i] = ReadUInt32BE(batRaw, i * 4);
         }
 
-        // ── Helpers ───────────────────────────────────────────────────────────────
+        private uint AllocateDynamicBlock(int blockIndex)
+        {
+            if (!baseStream.CanWrite)
+                throw new NotSupportedException("Dynamic VHD is read-only.");
+            if (blockIndex < 0 || blockIndex >= bat.Length)
+                throw new IOException("Dynamic VHD block index is out of range.");
 
-        private static byte[] ReadFooter(Stream s)
+            byte[] footer = new byte[FooterSize];
+            baseStream.Seek(-FooterSize, SeekOrigin.End);
+            ReadExact(baseStream, footer, 0, footer.Length);
+
+            long newBlockOffset = baseStream.Length - FooterSize;
+            if ((newBlockOffset % SectorSize) != 0)
+                throw new InvalidDataException("Dynamic VHD footer is not sector aligned.");
+
+            byte[] bitmap = new byte[bitmapSectors * SectorSize];
+            int usedBitmapBytes = (blockSectors + 7) / 8;
+            for (int i = 0; i < usedBitmapBytes; i++)
+                bitmap[i] = 0xFF;
+
+            byte[] zeroBlock = new byte[blockSizeBytes];
+
+            baseStream.Seek(newBlockOffset, SeekOrigin.Begin);
+            baseStream.Write(bitmap, 0, bitmap.Length);
+            baseStream.Write(zeroBlock, 0, zeroBlock.Length);
+            baseStream.Write(footer, 0, footer.Length);
+
+            uint batEntry = (uint)(newBlockOffset / SectorSize);
+            WriteUInt32BE(baseStream, batOffset + blockIndex * 4L, batEntry);
+            bat[blockIndex] = batEntry;
+            baseStream.Flush();
+
+            return batEntry;
+        }
+
+        private static byte[] ReadFooter(Stream stream)
         {
             byte[] footer = new byte[FooterSize];
-            // VHD footer can appear at either the very end (standard) or the very
-            // beginning of the file (dynamic VHD has a copy at offset 0).
-            // We read from the end first (authoritative copy for all types).
-            s.Seek(-FooterSize, SeekOrigin.End);
-            ReadExact(s, footer, 0, FooterSize);
+            stream.Seek(-FooterSize, SeekOrigin.End);
+            ReadExact(stream, footer, 0, footer.Length);
             return footer;
         }
 
         private static bool StartsWithCookie(byte[] data, int offset, byte[] cookie)
         {
-            if (data.Length - offset < cookie.Length) return false;
+            if (data.Length - offset < cookie.Length)
+                return false;
+
             for (int i = 0; i < cookie.Length; i++)
-                if (data[offset + i] != cookie[i]) return false;
+            {
+                if (data[offset + i] != cookie[i])
+                    return false;
+            }
+
             return true;
         }
 
-        private static void ReadExact(Stream s, byte[] buf, int off, int count)
+        private static void ReadExact(Stream stream, byte[] buffer, int offset, int count)
         {
-            int read = 0;
-            while (read < count)
+            int totalRead = 0;
+            while (totalRead < count)
             {
-                int n = s.Read(buf, off + read, count - read);
-                if (n == 0) throw new EndOfStreamException("Unexpected end of VHD file.");
-                read += n;
+                int read = stream.Read(buffer, offset + totalRead, count - totalRead);
+                if (read == 0)
+                    throw new EndOfStreamException("Unexpected end of VHD file.");
+                totalRead += read;
             }
         }
 
-        // Big-endian multi-byte readers (VHD uses big-endian throughout)
-        private static uint ReadUInt32BE(byte[] buf, int offset) =>
-            ((uint)buf[offset]     << 24) |
-            ((uint)buf[offset + 1] << 16) |
-            ((uint)buf[offset + 2] <<  8) |
-             (uint)buf[offset + 3];
+        private static void WriteUInt32BE(Stream stream, long offset, uint value)
+        {
+            byte[] data =
+            {
+                (byte)(value >> 24),
+                (byte)(value >> 16),
+                (byte)(value >> 8),
+                (byte)value
+            };
 
-        private static ulong ReadUInt64BE(byte[] buf, int offset) =>
-            ((ulong)buf[offset]     << 56) |
-            ((ulong)buf[offset + 1] << 48) |
-            ((ulong)buf[offset + 2] << 40) |
-            ((ulong)buf[offset + 3] << 32) |
-            ((ulong)buf[offset + 4] << 24) |
-            ((ulong)buf[offset + 5] << 16) |
-            ((ulong)buf[offset + 6] <<  8) |
-             (ulong)buf[offset + 7];
+            stream.Seek(offset, SeekOrigin.Begin);
+            stream.Write(data, 0, data.Length);
+        }
+
+        private static uint ReadUInt32BE(byte[] buffer, int offset) =>
+            ((uint)buffer[offset] << 24) |
+            ((uint)buffer[offset + 1] << 16) |
+            ((uint)buffer[offset + 2] << 8) |
+            buffer[offset + 3];
+
+        private static ulong ReadUInt64BE(byte[] buffer, int offset) =>
+            ((ulong)buffer[offset] << 56) |
+            ((ulong)buffer[offset + 1] << 48) |
+            ((ulong)buffer[offset + 2] << 40) |
+            ((ulong)buffer[offset + 3] << 32) |
+            ((ulong)buffer[offset + 4] << 24) |
+            ((ulong)buffer[offset + 5] << 16) |
+            ((ulong)buffer[offset + 6] << 8) |
+            buffer[offset + 7];
     }
 }

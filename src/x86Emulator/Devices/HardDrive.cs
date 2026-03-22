@@ -12,6 +12,7 @@ namespace x86Emulator.ATADevice
         private Stream diskStream;
         private string imagePath;
         private const int SectorSize = 512;
+        private long totalSectors;
 
         // Geometry computed from image size; Bochs BIOS needs non-zero values
         public uint Cylinders { get; private set; } = 1024;
@@ -20,7 +21,8 @@ namespace x86Emulator.ATADevice
 
         // LBA saved when a write command is issued (registers may change before FinishCommand)
         private uint pendingWriteLBA;
-        private byte pendingWriteCount;
+        private int pendingWriteCount;
+        private bool writeTransferActive;
 
         public HardDrive() { }
 
@@ -67,7 +69,7 @@ namespace x86Emulator.ATADevice
         private void UpdateGeometry()
         {
             if (diskStream == null) return;
-            long totalSectors = diskStream.Length / SectorSize;
+            totalSectors = diskStream.Length / SectorSize;
             if (totalSectors > 0)
             {
                 Heads = 16;
@@ -120,7 +122,7 @@ namespace x86Emulator.ATADevice
         }
 
         // Returns the effective sector count: ATA SectorCount=0 means 256 sectors per the ATA spec.
-        private byte GetEffectiveSectorCount() => SectorCount == 0 ? (byte)1 : SectorCount;
+        private int GetEffectiveSectorCount() => SectorCount == 0 ? 256 : SectorCount;
 
         // Returns LBA28 address from the current ATA registers (supports LBA and CHS modes).
         private uint GetLBA()
@@ -168,12 +170,13 @@ namespace x86Emulator.ATADevice
             data[55] = (ushort)Heads;
             data[56] = (ushort)Sectors;
 
-            uint totalSectors = Cylinders * Heads * Sectors;
-            data[57] = (ushort)(totalSectors & 0xFFFF); // Current capacity (low)
-            data[58] = (ushort)(totalSectors >> 16);    // Current capacity (high)
+            uint chsSectors = Cylinders * Heads * Sectors;
+            uint lbaSectors = totalSectors > uint.MaxValue ? uint.MaxValue : (uint)totalSectors;
+            data[57] = (ushort)(chsSectors & 0xFFFF); // Current capacity (low)
+            data[58] = (ushort)(chsSectors >> 16);    // Current capacity (high)
 
-            data[60] = (ushort)(totalSectors & 0xFFFF); // LBA total sectors (low)
-            data[61] = (ushort)(totalSectors >> 16);    // LBA total sectors (high)
+            data[60] = (ushort)(lbaSectors & 0xFFFF); // LBA total sectors (low)
+            data[61] = (ushort)(lbaSectors >> 16);    // LBA total sectors (high)
 
             data[63] = 0x0007; // Multiword DMA modes 0-2 supported
             data[64] = 0x0003; // Advanced PIO modes 3-4 supported
@@ -189,9 +192,9 @@ namespace x86Emulator.ATADevice
             data[87] = 0x4000;
             data[88] = 0x003F; // Ultra DMA modes 0-5 supported
 
-            sectorBuffer = data;
-            bufferIndex = 0;
+            StartReadTransfer(data);
             Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Error = DeviceError.None;
         }
 
         // ATA string encoding: within each word, the high byte holds the first character.
@@ -213,7 +216,7 @@ namespace x86Emulator.ATADevice
             }
 
             uint lba = GetLBA();
-            byte count = GetEffectiveSectorCount();
+            int count = GetEffectiveSectorCount();
             long byteOffset = (long)lba * SectorSize;
 
             if (byteOffset + (long)count * SectorSize > diskStream.Length)
@@ -226,13 +229,15 @@ namespace x86Emulator.ATADevice
             int totalBytes = count * SectorSize;
             byte[] buffer = new byte[totalBytes];
             diskStream.Seek(byteOffset, SeekOrigin.Begin);
-            diskStream.Read(buffer, 0, totalBytes);
+            ReadExact(diskStream, buffer, totalBytes);
 
-            sectorBuffer = new ushort[totalBytes / 2];
-            Buffer.BlockCopy(buffer, 0, sectorBuffer, 0, totalBytes);
-            bufferIndex = 0;
+            ushort[] words = new ushort[totalBytes / 2];
+            Buffer.BlockCopy(buffer, 0, words, 0, totalBytes);
+            StartReadTransfer(words);
 
             Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Error = DeviceError.None;
+            writeTransferActive = false;
         }
 
         private void WriteSectors()
@@ -256,13 +261,21 @@ namespace x86Emulator.ATADevice
             }
 
             // Prepare buffer for the host to fill; FinishCommand() writes it to disk.
-            sectorBuffer = new ushort[pendingWriteCount * SectorSize / 2];
-            bufferIndex = 0;
+            StartWriteTransfer(pendingWriteCount * SectorSize / 2);
             Status = DeviceStatus.DataRequest | DeviceStatus.Ready;
+            Error = DeviceError.None;
+            writeTransferActive = true;
         }
 
         public override void FinishCommand()
         {
+            if (!writeTransferActive)
+            {
+                Status = DeviceStatus.Ready;
+                return;
+            }
+
+            writeTransferActive = false;
             if (diskStream != null && sectorBuffer != null && sectorBuffer.Length > 0)
             {
                 int totalBytes = sectorBuffer.Length * 2;
@@ -274,11 +287,24 @@ namespace x86Emulator.ATADevice
                 diskStream.Flush();
             }
             Status = DeviceStatus.Ready;
+            Error = DeviceError.None;
         }
 
         public override void FinishRead()
         {
             Status = DeviceStatus.Ready;
+        }
+
+        private static void ReadExact(Stream stream, byte[] buffer, int count)
+        {
+            int offset = 0;
+            while (offset < count)
+            {
+                int read = stream.Read(buffer, offset, count - offset);
+                if (read == 0)
+                    throw new EndOfStreamException("Unexpected end of disk image.");
+                offset += read;
+            }
         }
     }
 }
